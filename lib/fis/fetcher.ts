@@ -84,7 +84,11 @@ function parseCalendar(html: string, seasonCode: string): FisRace[] {
     const navMonth = parseInt($(el).attr("data-navmonth") || "1");
     const navStart = parseInt($(el).attr("data-navstart") || "1");
     const yearMatch = dateLinkText.match(/\b(20\d\d)\b/);
-    const year = yearMatch ? parseInt(yearMatch[1]) : parseInt(seasonCode);
+    const year = yearMatch
+      ? parseInt(yearMatch[1])
+      : navMonth >= 9
+        ? parseInt(seasonCode) - 1
+        : parseInt(seasonCode);
     const date = new Date(year, navMonth - 1, navStart);
 
     // --- Venue ---

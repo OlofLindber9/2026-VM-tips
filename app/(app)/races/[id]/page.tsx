@@ -109,6 +109,9 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
         }
       : null;
 
+  const isCompleted = race.status === "completed";
+  const isPast = isCompleted || race.date < new Date();
+
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
       {/* Race header */}
@@ -118,9 +121,9 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
           <span className={`badge ${race.gender === "W" ? "badge-yellow" : "badge-blue"}`}>
             {genderLabel(race.gender)}
           </span>
-          <span className={`badge ${race.status === "completed" ? "badge-green" : "badge-blue"}`}>
-            {race.status === "completed" ? "Completed" : "Upcoming"}
-          </span>
+          {isCompleted && <span className="badge badge-green">Completed</span>}
+          {!isCompleted && isPast && <span className="badge badge-gray">Past</span>}
+          {!isPast && <span className="badge badge-blue">Upcoming</span>}
         </div>
         <h1 className="text-2xl font-bold text-ski-blue">{race.name}</h1>
         <p className="text-gray-500 mt-1">
@@ -157,6 +160,7 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
             score: p.score,
           }))}
           athletePool={athletePool}
+          locked={isPast}
         />
       )}
     </div>

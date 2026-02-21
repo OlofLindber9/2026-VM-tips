@@ -26,6 +26,7 @@ interface Props {
   groups: Group[];
   existingPredictions: ExistingPrediction[];
   athletePool: Athlete[];
+  locked?: boolean;
 }
 
 export default function PredictionForm({
@@ -33,6 +34,7 @@ export default function PredictionForm({
   groups,
   existingPredictions,
   athletePool,
+  locked = false,
 }: Props) {
   const [selectedGroup, setSelectedGroup] = useState(groups[0]?.id || "");
   const [first, setFirst] = useState("");
@@ -44,6 +46,7 @@ export default function PredictionForm({
   const [search, setSearch] = useState("");
 
   const isCompleted = race.status === "completed";
+  const isLocked = isCompleted || locked;
 
   const existing = existingPredictions.find((p) => p.groupId === selectedGroup);
 
@@ -124,7 +127,7 @@ export default function PredictionForm({
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          disabled={isCompleted}
+          disabled={isLocked}
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ski-light bg-white disabled:bg-gray-50 disabled:text-gray-400"
         >
           <option value="">— select athlete —</option>
@@ -142,7 +145,7 @@ export default function PredictionForm({
     <div className="card space-y-5">
       <div className="flex items-center justify-between">
         <h2 className="font-bold text-ski-blue">
-          {isCompleted ? "Your predictions" : "Make your prediction"}
+          {isLocked ? "Your prediction" : "Make your prediction"}
         </h2>
         {existing?.score !== null && existing?.score !== undefined && (
           <span className="text-ski-accent font-bold text-lg">{existing.score} pts</span>
@@ -167,8 +170,8 @@ export default function PredictionForm({
         </div>
       )}
 
-      {/* Already scored (completed race) */}
-      {isCompleted && existing ? (
+      {/* Read-only prediction summary (race is locked — past or completed) */}
+      {isLocked && existing ? (
         <div className="space-y-2">
           {[
             { pos: 1, id: existing.first },
@@ -187,6 +190,10 @@ export default function PredictionForm({
             );
           })}
         </div>
+      ) : isLocked ? (
+        <p className="text-sm text-gray-400 text-center py-4">
+          Predictions are closed for this race.
+        </p>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           {athletePool.length > 10 && (
@@ -214,11 +221,11 @@ export default function PredictionForm({
             </div>
           )}
 
-          <button type="submit" disabled={loading || isCompleted} className="btn-primary w-full">
+          <button type="submit" disabled={loading || isLocked} className="btn-primary w-full">
             {loading ? "Saving…" : existing ? "Update prediction" : "Submit prediction"}
           </button>
 
-          {existing && !isCompleted && (
+          {existing && !isLocked && (
             <p className="text-xs text-gray-400 text-center">
               You already have a prediction for this group — submitting will update it.
             </p>
@@ -226,7 +233,7 @@ export default function PredictionForm({
         </form>
       )}
 
-      {!isCompleted && !existing && athletePool.length === 0 && (
+      {!isLocked && !existing && athletePool.length === 0 && (
         <p className="text-sm text-gray-400 text-center py-4">
           Athlete list not available yet. Check back closer to race day.
         </p>
