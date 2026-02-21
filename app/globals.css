@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --ski-blue: #1a3a5c;
+    --ski-light: #2d6a9f;
+    --ski-snow: #f0f4f8;
+    --ski-accent: #e8a020;
+  }
+
+  body {
+    @apply bg-ski-snow text-gray-900;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-ski-blue text-white font-semibold px-4 py-2 rounded-lg hover:bg-ski-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply bg-white text-ski-blue font-semibold px-4 py-2 rounded-lg border border-ski-blue hover:bg-ski-snow transition-colors;
+  }
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-5;
+  }
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+  }
+  .badge-blue {
+    @apply badge bg-blue-100 text-blue-700;
+  }
+  .badge-green {
+    @apply badge bg-green-100 text-green-700;
+  }
+  .badge-yellow {
+    @apply badge bg-yellow-100 text-yellow-700;
+  }
+  .badge-red {
+    @apply badge bg-red-100 text-red-700;
+  }
+}

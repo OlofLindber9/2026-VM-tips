@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Mirrors Supabase auth.users — created on first sign-in via a trigger or API route
+model Profile {
+  id          String @id // Supabase user ID
+  displayName String
+  email       String
+}
+
+model Race {
+  id          String   @id // FIS race ID, e.g. "46737"
+  name        String   // e.g. "Women Sprint Classic - Ruka"
+  venue       String   // e.g. "Ruka"
+  country     String   // e.g. "FIN"
+  date        DateTime
+  discipline  String   // e.g. "Sprint", "Distance", "Pursuit", "Skiathlon", "Relay"
+  gender      String   // "M" or "W"
+  season      String   // e.g. "2025-2026"
+  status      String   @default("upcoming") // "upcoming" | "completed"
+  results     Result[]
+  predictions Prediction[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Athlete {
+  id         String   @id // FIS competitor ID
+  name       String
+  nationCode String
+  results    Result[]
+}
+
+model Result {
+  id        String  @id @default(cuid())
+  raceId    String
+  athleteId String
+  rank      Int?    // null = DNF/DSQ
+  race      Race    @relation(fields: [raceId], references: [id])
+  athlete   Athlete @relation(fields: [athleteId], references: [id])
+
+  @@unique([raceId, athleteId])
+}
+
+model Group {
+  id          String            @id @default(cuid())
+  name        String
+  inviteCode  String            @unique @default(cuid())
+  createdBy   String            // Supabase user ID
+  createdAt   DateTime          @default(now())
+  members     GroupMembership[]
+  predictions Prediction[]
+}
+
+model GroupMembership {
+  id       String   @id @default(cuid())
+  userId   String   // Supabase user ID
+  groupId  String
+  joinedAt DateTime @default(now())
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+}
+
+// Scoring: 3 pts if predicted 1st = actual 1st
+//          +1 pt if predicted 2nd appears anywhere in actual top 3
+//          +1 pt if predicted 3rd appears anywhere in actual top 3
+model Prediction {
+  id        String   @id @default(cuid())
+  userId    String   // Supabase user ID
+  raceId    String
+  groupId   String
+  first     String   // FIS athlete ID
+  second    String   // FIS athlete ID
+  third     String   // FIS athlete ID
+  score     Int?     // null until race is completed and scored
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  race      Race     @relation(fields: [raceId], references: [id])
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, raceId, groupId])
+}
