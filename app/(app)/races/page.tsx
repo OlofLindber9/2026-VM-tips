@@ -12,6 +12,10 @@ async function refreshCalendarAction() {
 
 async function syncResultsAction() {
   "use server";
+  // Always refresh the calendar first so fisRaceIds are populated for every
+  // event before we attempt to sync results. The fetch is cached by Next.js
+  // for 1 h so this is cheap on repeated clicks.
+  await syncCalendar();
   await syncCompletedRaces();
   revalidatePath("/races");
 }
@@ -26,7 +30,14 @@ export default async function RacesPage() {
 
   const races = await prisma.race.findMany({
     orderBy: { date: "asc" },
-    include: { _count: { select: { predictions: true, results: true } } },
+    include: {
+      _count: { select: { predictions: true, results: true } },
+      results: {
+        where: { rank: 1 },
+        include: { athlete: true },
+        take: 1,
+      },
+    },
   });
 
   const now = new Date();
@@ -99,15 +110,17 @@ function RaceCard({
     gender: string;
     status: string;
     _count: { predictions: number; results: number };
+    results: { rank: number | null; athlete: { name: string; nationCode: string } }[];
   };
 }) {
   const isCompleted = race.status === "completed";
   const isPast = isCompleted || race.date < new Date();
+  const winner = race.results[0]?.athlete;
 
   return (
     <Link
       href={`/races/${race.id}`}
-      className={`card hover:border-ski-light hover:shadow-md transition-all flex items-center justify-between gap-4 ${isPast ? "opacity-70" : ""}`}
+      className={`card hover:border-ski-light hover:shadow-md transition-all flex items-center justify-between gap-4 ${isPast && !isCompleted ? "opacity-60" : ""}`}
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
@@ -124,10 +137,14 @@ function RaceCard({
         <div className="text-sm text-gray-400 mt-0.5">
           {format(race.date)} · {race.venue}, {race.country}
         </div>
+        {winner && (
+          <div className="text-sm text-gray-500 mt-1">
+            🥇 {winner.name} <span className="text-gray-400">({winner.nationCode})</span>
+          </div>
+        )}
       </div>
       <div className="text-right text-xs text-gray-400 shrink-0">
         <div>{race._count.predictions} predictions</div>
-        {isCompleted && <div>{race._count.results} results</div>}
       </div>
     </Link>
   );

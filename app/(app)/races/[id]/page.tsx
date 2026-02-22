@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { format, disciplineColor, genderLabel, wcPoints } from "@/lib/utils";
 import PredictionForm from "@/components/PredictionForm";
 import ResultsPodium from "@/components/ResultsPodium";
 import { fetchAthletePool } from "@/lib/fis/fetcher";
-import { syncRaceResults } from "@/lib/fis/sync";
+import { syncRaceResults, currentSeasonCode } from "@/lib/fis/sync";
 
 export default async function RacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -13,26 +14,24 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
   const { data: { user } } = await supabase.auth.getUser();
   const userId = user!.id;
 
-  // Auto-sync: if the race date has passed and we have no results yet, fetch from FIS.
-  // Only runs once per race — after syncing the race is marked "completed" and skipped.
-  const raceMeta = await prisma.race.findUnique({
-    where: { id },
-    select: { status: true, date: true, fisRaceIds: true },
-  });
-  if (
-    raceMeta &&
-    raceMeta.status === "upcoming" &&
-    raceMeta.date < new Date() &&
-    raceMeta.fisRaceIds.length > 0
-  ) {
-    for (const fisRaceId of raceMeta.fisRaceIds) {
+  // Server action: sync results for this specific race on demand.
+  // Not called automatically — the page always loads from DB first.
+  async function syncRaceAction() {
+    "use server";
+    const meta = await prisma.race.findUnique({
+      where: { id },
+      select: { fisRaceIds: true },
+    });
+    if (!meta) return;
+    for (const fisRaceId of meta.fisRaceIds) {
       try {
         const { results } = await syncRaceResults(id, fisRaceId);
-        if (results >= 3) break; // Valid podium found
+        if (results >= 3) break;
       } catch {
-        // Ignore failures — we'll just show upcoming state
+        // ignore individual failures
       }
     }
+    revalidatePath(`/races/${id}`);
   }
 
   const race = await prisma.race.findUnique({
@@ -47,36 +46,28 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
 
   if (!race) notFound();
 
-  // Get user's groups for the prediction form
   const memberships = await prisma.groupMembership.findMany({
     where: { userId },
     include: { group: true },
   });
 
-  // Get user's existing predictions for this race (keyed by groupId)
   const existingPredictions = await prisma.prediction.findMany({
     where: { userId, raceId: id },
-    include: {
-      race: { select: { name: true } },
-    },
+    include: { race: { select: { name: true } } },
   });
 
-  // Build athlete pool for the prediction picker.
-  // Priority: (1) race's own results if completed, (2) athletes from other completed
-  // same-gender races in DB, (3) FIS seed fetch (cached 24h by Next.js — fast after first load).
+  // Athlete pool: use race results if completed, otherwise build from DB results
+  // across all completed same-gender races. Falls back to FIS fetch only when
+  // the DB has no results at all (cold start before any sync).
   let athletePool: { id: string; name: string; nationCode: string }[] = [];
 
   if (race.results.length > 0) {
-    // Completed race — use its own result list
     athletePool = race.results.map((r) => ({
       id: r.athlete.id,
       name: r.athlete.name,
       nationCode: r.athlete.nationCode,
     }));
   } else {
-    // Upcoming race — build athlete pool from all synced same-gender results in the DB.
-    // Calculate accumulated WC points so athletes are ordered by current season standing.
-    // This updates automatically whenever new race results are synced.
     const allResults = await prisma.result.findMany({
       where: { race: { gender: race.gender, status: "completed" } },
       include: { athlete: true },
@@ -94,23 +85,18 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
         .sort((a, b) => b.pts - a.pts || a.name.localeCompare(b.name))
         .map(({ id, name, nationCode }) => ({ id, name, nationCode }));
     } else {
-      // No results synced yet — fall back to FIS-fetched pool sorted by accumulated
-      // WC points from the hardcoded season race list (cached 24h by Next.js).
-      athletePool = await fetchAthletePool(race.gender);
+      athletePool = await fetchAthletePool(race.gender, currentSeasonCode());
     }
   }
 
   const podium =
     race.results.length >= 3
-      ? {
-          first: race.results[0],
-          second: race.results[1],
-          third: race.results[2],
-        }
+      ? { first: race.results[0], second: race.results[1], third: race.results[2] }
       : null;
 
   const isCompleted = race.status === "completed";
   const isPast = isCompleted || race.date < new Date();
+  const canSyncResults = isPast && !isCompleted && race.fisRaceIds.length > 0;
 
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
@@ -129,9 +115,18 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
         <p className="text-gray-500 mt-1">
           {format(race.date)} · {race.venue}, {race.country}
         </p>
+
+        {/* Load results button — shown for past races not yet synced */}
+        {canSyncResults && (
+          <form action={syncRaceAction} className="mt-4">
+            <button type="submit" className="btn-secondary text-sm">
+              Load results
+            </button>
+          </form>
+        )}
       </div>
 
-      {/* Official results (if completed) */}
+      {/* Official results */}
       {podium && (
         <div className="card">
           <h2 className="font-bold text-ski-blue mb-4">Official results</h2>

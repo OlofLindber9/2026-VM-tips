@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { fetchCalendar, fetchResults } from "./fetcher";
+import { fetchCalendar, fetchEventRaceIds, fetchResults } from "./fetcher";
 import { calculateScore, getPodiumFromResults } from "@/lib/scoring";
 
 /** Current FIS season code (ending year, e.g. 2026 = 2025-26 season) */
@@ -11,41 +11,32 @@ export function currentSeasonCode(): string {
 }
 
 /**
- * Known FIS individual race IDs for the 2025-26 WC season, by venue and gender.
- * These map our one-race-per-event DB records to the specific FIS race IDs
- * used to fetch results from the FIS results endpoint.
- *
- * Lookup is done by substring match on venue name (case-insensitive).
- * Update this list each season or when new venues are confirmed.
- */
-const VENUE_RACE_IDS: Record<string, { M: string[]; W: string[] }> = {
-  Ruka:        { M: ["49463", "49465", "49467"], W: ["49464", "49466", "49468"] },
-  Lillehammer: { M: ["49477", "49479"],          W: ["49478"] },
-  Davos:       { M: ["49489", "49491"],          W: ["49490"] },
-  Toblach:     { M: ["49541", "49547", "49549"], W: ["49542", "49548"] },
-  Goms:        { M: [],                          W: ["49500"] },
-};
-
-function lookupFisRaceIds(venue: string, gender: string): string[] {
-  const venueLower = venue.toLowerCase();
-  for (const [key, genderMap] of Object.entries(VENUE_RACE_IDS)) {
-    if (venueLower.includes(key.toLowerCase())) {
-      return genderMap[gender as "M" | "W"] ?? [];
-    }
-  }
-  return [];
-}
-
-/**
  * Fetch the FIS calendar and upsert races into the DB.
- * Also populates fisRaceIds from the VENUE_RACE_IDS map.
+ * Race IDs are discovered dynamically by fetching each event's detail page on
+ * the FIS website, so no manual hardcoding is needed as new events are added.
  */
 export async function syncCalendar(): Promise<number> {
   const seasonCode = currentSeasonCode();
   const races = await fetchCalendar(seasonCode);
 
+  // Fetch race IDs once per unique event (calendar has up to 2 entries per
+  // event — one for M, one for W — so we deduplicate to halve the requests).
+  const uniqueEventIds = [...new Set(races.map((r) => r.id.split("-")[0]))];
+  const raceIdsByEvent = new Map<string, { M: string[]; W: string[] }>();
+
+  for (const eventId of uniqueEventIds) {
+    try {
+      raceIdsByEvent.set(eventId, await fetchEventRaceIds(eventId, seasonCode));
+    } catch {
+      raceIdsByEvent.set(eventId, { M: [], W: [] });
+    }
+  }
+
   for (const race of races) {
-    const fisRaceIds = lookupFisRaceIds(race.venue, race.gender);
+    const eventId = race.id.split("-")[0];
+    const gender = race.gender as "M" | "W";
+    const fisRaceIds = raceIdsByEvent.get(eventId)?.[gender] ?? [];
+
     await prisma.race.upsert({
       where: { id: race.id },
       update: {
