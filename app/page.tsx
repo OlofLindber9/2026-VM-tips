@@ -4,42 +4,208 @@ import { redirect } from "next/navigation";
 
 export default async function Home() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (user) redirect("/dashboard");
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4" style={{ background: "linear-gradient(135deg, #1a3a5c 0%, #2d6a9f 60%, #e8a020 100%)" }}>
-      <div className="text-center max-w-xl">
-        <div className="text-6xl mb-4">⛷️</div>
-        <h1 className="text-4xl font-bold text-white mb-3">Ski Predictor</h1>
-        <p className="text-blue-100 text-lg mb-8">
-          Compete with your friends by predicting the podiums of the FIS
-          Cross-Country World Cup. 3 points for the winner, plus 1 for every
-          correct podium athlete.
-        </p>
-        <div className="flex gap-4 justify-center">
-          <Link href="/signup" className="bg-white text-ski-blue font-bold px-6 py-3 rounded-xl hover:bg-blue-50 transition-colors">
-            Get started
-          </Link>
-          <Link href="/login" className="border border-white text-white font-bold px-6 py-3 rounded-xl hover:bg-white/10 transition-colors">
-            Log in
-          </Link>
-        </div>
+    <main className="page-dark relative overflow-hidden">
+      {/*
+       * Hero background image — drop a photo of a ski athlete at:
+       *   public/images/hero-bg.jpg
+       * The gradient overlay keeps text readable regardless of the image.
+       */}
+      <div 
+        className="absolute inset-0 z-0 opacity-25 mix-blend-luminosity"
+        style={{
+          backgroundImage: "url('/images/Frida.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "40% center", // Shifts image slightly left
+          backgroundRepeat: "no-repeat"
+        }}
+      />
+
+      {/* Gradient overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(to bottom, rgba(5,14,26,0.6) 0%, rgba(5,14,26,0.25) 45%, rgba(5,14,26,0.88) 100%)",
+        }}
+      />
+
+      {/* Animated speed lines */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+        <div className="speed-line w-3/4" style={{ top: "28%", animationDelay: "0s" }} />
+        <div
+          className="speed-line w-1/2"
+          style={{ top: "40%", animationDelay: "0.9s", opacity: 0.4 }}
+        />
+        <div
+          className="speed-line w-2/3"
+          style={{ top: "57%", animationDelay: "1.8s", opacity: 0.3 }}
+        />
       </div>
 
-      <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl w-full text-white text-center">
-        {[
-          { icon: "🏆", title: "Create a group", desc: "Invite your friends with a short code" },
-          { icon: "📋", title: "Make predictions", desc: "Pick the top 3 before each race starts" },
-          { icon: "📊", title: "Track the standings", desc: "Compete on the leaderboard all season" },
-        ].map((f) => (
-          <div key={f.title} className="bg-white/10 rounded-xl p-5 backdrop-blur">
-            <div className="text-3xl mb-2">{f.icon}</div>
-            <div className="font-semibold mb-1">{f.title}</div>
-            <div className="text-blue-100 text-sm">{f.desc}</div>
+      {/* Gold accent top bar */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[2px]"
+        style={{
+          background: "linear-gradient(90deg, transparent, #e8a020 30%, #f5c842 60%, transparent)",
+        }}
+      />
+
+      {/* ── Content ─────────────────────────────────────────────── */}
+      <div className="relative z-10 flex flex-col min-h-screen px-4">
+        {/* Top nav strip */}
+        <div className="flex justify-between items-center max-w-5xl mx-auto w-full py-5">
+          <span className="text-white/60 font-bold tracking-widest text-xs uppercase">
+            ⛷️&nbsp;&nbsp;FIS Cross-Country
+          </span>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/login"
+              className="text-white/60 hover:text-white text-sm font-semibold transition-colors"
+            >
+              Log in
+            </Link>
+            <Link
+              href="/signup"
+              className="btn-ghost text-sm px-4 py-1.5 rounded-xl"
+            >
+              Sign up free
+            </Link>
           </div>
-        ))}
+        </div>
+
+        {/* ── Hero ──────────────────────────────────────────────── */}
+        <div className="flex-1 flex flex-col items-center justify-center text-center max-w-3xl mx-auto w-full pb-12">
+          {/* Season chip */}
+          <div
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-ski-accent/40 text-ski-accent text-xs font-bold tracking-widest uppercase mb-8 animate-slide-down"
+            style={{ background: "rgba(232,160,32,0.1)" }}
+          >
+            🏔️&nbsp;&nbsp;2025 / 26 World Cup Season
+          </div>
+
+          {/* Title */}
+          <h1
+            className="text-white uppercase leading-none mb-5 animate-fade-in"
+            style={{
+              fontFamily: "var(--font-barlow), 'Barlow Condensed', Impact, sans-serif",
+              fontSize: "clamp(4.5rem, 13vw, 9.5rem)",
+              fontWeight: 900,
+              letterSpacing: "-0.025em",
+            }}
+          >
+            <span className="gradient-text-light">Ski</span>
+            <br />
+            Predictor
+          </h1>
+
+          {/* Subtitle */}
+          <p
+            className="text-ski-ice/75 text-lg sm:text-xl max-w-lg mx-auto mb-10 anim-ready animate-slide-up"
+          >
+            Challenge your friends. Predict the podiums. Conquer the{" "}
+            <span className="text-ski-accent font-semibold">FIS World Cup</span> leaderboard.
+          </p>
+
+          {/* CTA buttons */}
+          <div className="flex flex-wrap gap-4 justify-center anim-ready animate-slide-up-1">
+            <Link
+              href="/signup"
+              className="inline-flex items-center gap-2 font-bold px-8 py-3.5 rounded-2xl text-ski-midnight text-base shadow-2xl transition-all duration-200 hover:-translate-y-1 animate-pulse-gold"
+              style={{
+                background: "linear-gradient(135deg, #f5c842, #e8a020)",
+                fontFamily: "var(--font-barlow), sans-serif",
+                letterSpacing: "0.02em",
+              }}
+            >
+              Get started free →
+            </Link>
+            <Link href="/login" className="btn-ghost px-8 py-3.5 text-base rounded-2xl">
+              Log in
+            </Link>
+          </div>
+        </div>
+
+        {/* ── Feature cards ─────────────────────────────────────── */}
+        <div className="max-w-4xl mx-auto w-full pb-14">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+            {[
+              {
+                icon: "🏆",
+                title: "Create a Group",
+                desc: "Invite friends with a short code and compete head-to-head all season.",
+                delay: "0.1s",
+              },
+              {
+                icon: "📋",
+                title: "Predict the Podium",
+                desc: "Pick the top 3 finishers before each race locks. Up to 5 points per race.",
+                delay: "0.2s",
+              },
+              {
+                icon: "📊",
+                title: "Track Standings",
+                desc: "Live leaderboard updates after every race. Who will top the table?",
+                delay: "0.3s",
+              },
+            ].map((f) => (
+              <div
+                key={f.title}
+                className="glass-card group hover:border-white/40 transition-all duration-300 hover:-translate-y-1 anim-ready animate-slide-up"
+                style={{ animationDelay: f.delay }}
+              >
+                <div className="text-4xl mb-3 group-hover:scale-110 transition-transform duration-200">
+                  {f.icon}
+                </div>
+                <h3
+                  className="text-white font-bold text-xl mb-2"
+                  style={{ fontFamily: "var(--font-barlow), 'Barlow Condensed', sans-serif" }}
+                >
+                  {f.title}
+                </h3>
+                <p className="text-ski-ice/65 text-sm leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Scoring strip */}
+          <div
+            className="glass-card text-center anim-ready animate-slide-up-2"
+            style={{ animationDelay: "0.4s" }}
+          >
+            <p className="text-white/40 text-[10px] uppercase tracking-[0.2em] font-bold mb-3">
+              Scoring system
+            </p>
+            <div className="flex flex-wrap justify-center gap-8 text-white">
+              {[
+                { pts: "3", label: "correct winner" },
+                { pts: "+1", label: "2nd in top 3" },
+                { pts: "+1", label: "3rd in top 3" },
+              ].map((s) => (
+                <div key={s.label} className="flex items-baseline gap-1.5">
+                  <span
+                    className="text-ski-accent font-black text-3xl"
+                    style={{ fontFamily: "var(--font-barlow), sans-serif" }}
+                  >
+                    {s.pts}
+                  </span>
+                  <span className="text-white/50 text-xs">pts &mdash; {s.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-white/10 py-4 text-center text-white/25 text-xs">
+          Powered by FIS official data &middot; Not affiliated with FIS
+        </div>
       </div>
     </main>
   );

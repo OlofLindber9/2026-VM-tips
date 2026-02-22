@@ -8,34 +8,75 @@
     --ski-light: #2d6a9f;
     --ski-snow: #f0f4f8;
     --ski-accent: #e8a020;
+    --ski-midnight: #050e1a;
+    --ski-deep: #0d1f35;
+    --ski-ice: #a8d4f0;
   }
 
   body {
     @apply bg-ski-snow text-gray-900;
   }
+
+  /* Display headings use Barlow Condensed */
+  h1,
+  h2 {
+    font-family: var(--font-barlow), "Barlow Condensed", "Impact", sans-serif;
+    letter-spacing: -0.01em;
+  }
 }
 
+/* ─── Buttons ───────────────────────────────────────────────────── */
 @layer components {
   .btn-primary {
-    @apply bg-ski-blue text-white font-semibold px-4 py-2 rounded-lg hover:bg-ski-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-ski-blue text-white font-bold px-6 py-2.5 rounded-xl
+           hover:bg-ski-light transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed
+           shadow-md hover:shadow-lg hover:shadow-blue-900/25
+           transform hover:-translate-y-0.5 active:translate-y-0;
   }
+
   .btn-secondary {
-    @apply bg-white text-ski-blue font-semibold px-4 py-2 rounded-lg border border-ski-blue hover:bg-ski-snow transition-colors;
+    @apply bg-white text-ski-blue font-bold px-6 py-2.5 rounded-xl
+           border border-ski-blue/25 hover:bg-sky-50
+           transition-all duration-200 shadow-sm hover:shadow-md;
   }
+
+  .btn-ghost {
+    @apply text-white font-bold px-6 py-2.5 rounded-xl
+           border border-white/30 hover:bg-white/10 hover:border-white/50
+           transition-all duration-200;
+  }
+
+  /* ─── Cards ───────────────────────────────────────────────────── */
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-5;
+    @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-5
+           transition-all duration-200;
   }
+
+  .card-hover {
+    @apply card hover:shadow-lg hover:border-sky-200 hover:-translate-y-0.5;
+  }
+
+  /* Glassmorphism card — used over dark/image backgrounds */
+  .glass-card {
+    @apply rounded-2xl p-5 border border-white/20 shadow-2xl;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  /* ─── Badges ─────────────────────────────────────────────────── */
   .badge {
-    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
   }
   .badge-blue {
-    @apply badge bg-blue-100 text-blue-700;
+    @apply badge bg-ski-blue/10 text-ski-blue;
   }
   .badge-green {
-    @apply badge bg-green-100 text-green-700;
+    @apply badge bg-emerald-100 text-emerald-700;
   }
   .badge-yellow {
-    @apply badge bg-yellow-100 text-yellow-700;
+    @apply badge bg-amber-100 text-amber-700;
   }
   .badge-red {
     @apply badge bg-red-100 text-red-700;
@@ -43,4 +84,81 @@
   .badge-gray {
     @apply badge bg-gray-100 text-gray-500;
   }
+  .badge-purple {
+    @apply badge bg-purple-100 text-purple-700;
+  }
+
+  /* ─── Text effects ────────────────────────────────────────────── */
+  .gradient-text {
+    background: linear-gradient(135deg, #2d6a9f 0%, #e8a020 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-text-light {
+    background: linear-gradient(135deg, #a8d4f0 0%, #f5c842 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ─── Inputs ──────────────────────────────────────────────────── */
+  .input-field {
+    @apply w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm
+           focus:outline-none focus:ring-2 focus:ring-ski-light/50 focus:border-ski-light
+           bg-white transition-all duration-150 placeholder:text-gray-400;
+  }
+
+  .input-dark {
+    @apply w-full rounded-xl px-4 py-2.5 text-sm text-white
+           focus:outline-none focus:ring-2 focus:ring-ski-accent/60
+           transition-all duration-150 placeholder:text-white/40;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  /* ─── Leaderboard rank rows ───────────────────────────────────── */
+  .rank-gold {
+    @apply bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200/60;
+  }
+  .rank-silver {
+    @apply bg-gradient-to-r from-gray-50 to-slate-50 border border-gray-200/60;
+  }
+  .rank-bronze {
+    @apply bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200/60;
+  }
+}
+
+/* ─── Dark-background page wrapper ───────────────────────────────── */
+.page-dark {
+  background: linear-gradient(160deg, #050e1a 0%, #0d1f35 45%, #1a3a5c 100%);
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ─── Hero background — place athlete image at /public/images/hero-bg.jpg ── */
+.hero-bg-image {
+  position: absolute;
+  inset: 0;
+  background-image: url("/images/hero-bg.jpg");
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+/* ─── Speed lines decoration ─────────────────────────────────────── */
+.speed-line {
+  position: absolute;
+  height: 1px;
+  left: -20%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(168, 212, 240, 0.5), transparent);
+  animation: speedLine 2.8s ease-in-out infinite;
+}
+
+/* ─── Staggered animation opacity start ───────────────────────────── */
+.anim-ready {
+  opacity: 0;
 }
