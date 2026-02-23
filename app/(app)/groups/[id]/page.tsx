@@ -84,18 +84,19 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
       {/* Header */}
-      <div className="card">
+      <div className="glass-card">
         <div className="flex justify-between items-start">
           <div>
-            <Link href="/groups" className="text-ski-light text-sm hover:underline">← My groups</Link>
-            <h1 className="text-2xl font-bold text-ski-blue mt-1">{group.name}</h1>
-            <p className="text-gray-500 text-sm mt-1">
+            <Link href="/groups" className="text-ski-ice text-sm hover:text-white transition-colors">← My groups</Link>
+            <h1 className="text-2xl font-bold text-white mt-1">{group.name}</h1>
+            <p className="text-white/50 text-sm mt-1">
               {group.members.length} member{group.members.length !== 1 ? "s" : ""}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-gray-400 mb-1">Invite code</p>
-            <span className="font-mono font-bold text-ski-blue bg-blue-50 px-3 py-1.5 rounded-lg text-sm tracking-widest">
+            <p className="text-xs text-white/40 mb-1">Invite code</p>
+            <span className="font-mono font-bold text-ski-ice px-3 py-1.5 rounded-lg text-sm tracking-widest"
+              style={{ background: "rgba(255,255,255,0.1)" }}>
               {group.inviteCode}
             </span>
           </div>
@@ -103,10 +104,10 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* Leaderboard */}
-      <div className="card">
-        <h2 className="font-bold text-ski-blue mb-4">🏆 Leaderboard</h2>
+      <div className="glass-card">
+        <h2 className="font-bold text-white mb-4">🏆 Leaderboard</h2>
         {leaderboard.length === 0 ? (
-          <p className="text-gray-400 text-sm">No members yet.</p>
+          <p className="text-white/40 text-sm">No members yet.</p>
         ) : (
           <div className="space-y-2">
             {leaderboard.map((entry, i) => {
@@ -115,30 +116,40 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
               return (
                 <div
                   key={entry.userId}
-                  className={`flex items-center gap-4 px-4 py-3 rounded-xl ${
-                    isCurrentUser
-                      ? "bg-blue-50 border border-ski-light"
+                  className="flex items-center gap-4 px-4 py-3 rounded-xl border transition-all"
+                  style={{
+                    background: isCurrentUser
+                      ? "rgba(168, 212, 240, 0.12)"
+                      : i === 0
+                      ? "rgba(245, 200, 66, 0.12)"
+                      : i === 1
+                      ? "rgba(255, 255, 255, 0.06)"
+                      : i === 2
+                      ? "rgba(232, 160, 32, 0.08)"
+                      : "rgba(255, 255, 255, 0.04)",
+                    borderColor: isCurrentUser
+                      ? "rgba(168, 212, 240, 0.3)"
                       : i < 3
-                      ? "bg-yellow-50"
-                      : "bg-gray-50"
-                  }`}
+                      ? "rgba(232, 160, 32, 0.2)"
+                      : "rgba(255, 255, 255, 0.08)",
+                  }}
                 >
                   <span className="text-xl w-8 text-center">
-                    {medals[i] ?? <span className="text-gray-400 font-bold text-base">{i + 1}</span>}
+                    {medals[i] ?? <span className="text-white/40 font-bold text-base">{i + 1}</span>}
                   </span>
                   <div className="flex-1">
-                    <span className="font-semibold text-sm">
+                    <span className="font-semibold text-sm text-white">
                       {entry.displayName}
                       {isCurrentUser && (
-                        <span className="ml-2 text-xs text-ski-light">(you)</span>
+                        <span className="ml-2 text-xs text-ski-ice">(you)</span>
                       )}
                     </span>
-                    <div className="text-xs text-gray-400 mt-0.5">
+                    <div className="text-xs text-white/40 mt-0.5">
                       {entry.scoredCount} race{entry.scoredCount !== 1 ? "s" : ""} scored
                     </div>
                   </div>
                   <span className="font-bold text-ski-accent text-lg">
-                    {entry.totalScore} <span className="text-xs font-normal text-gray-400">pts</span>
+                    {entry.totalScore} <span className="text-xs font-normal text-white/40">pts</span>
                   </span>
                 </div>
               );
@@ -149,8 +160,8 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
 
       {/* Upcoming races to predict */}
       {upcomingRaces.length > 0 && (
-        <div className="card">
-          <h2 className="font-bold text-ski-blue mb-4">Predict upcoming races</h2>
+        <div className="glass-card">
+          <h2 className="font-bold text-white mb-4">Predict upcoming races</h2>
           <div className="space-y-2">
             {upcomingRaces.map((race) => {
               const myPrediction = predictionsByUser[userId]?.find(
@@ -160,11 +171,11 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
                 <Link
                   key={race.id}
                   href={`/races/${race.id}`}
-                  className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-ski-light hover:bg-blue-50 transition-colors"
+                  className="flex items-center justify-between p-3 rounded-xl border border-white/10 hover:border-white/25 hover:bg-white/8 transition-all"
                 >
                   <div>
-                    <div className="font-medium text-sm">{race.name}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">{format(race.date)}</div>
+                    <div className="font-medium text-sm text-white/90">{race.name}</div>
+                    <div className="text-xs text-white/40 mt-0.5">{format(race.date)}</div>
                   </div>
                   {myPrediction ? (
                     <span className="badge badge-green">Predicted</span>

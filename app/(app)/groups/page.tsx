@@ -22,7 +22,7 @@ export default async function GroupsPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-ski-blue">My Groups</h1>
+        <h1 className="text-2xl font-bold text-white">My Groups</h1>
         <div className="flex gap-3">
           <Link href="/groups/join" className="btn-secondary text-sm">Join group</Link>
           <Link href="/groups/create" className="btn-primary text-sm">Create group</Link>
@@ -30,10 +30,10 @@ export default async function GroupsPage() {
       </div>
 
       {memberships.length === 0 ? (
-        <div className="card text-center py-12">
+        <div className="glass-card text-center py-12">
           <div className="text-4xl mb-3">👥</div>
-          <p className="text-gray-500 mb-2 font-medium">No groups yet</p>
-          <p className="text-gray-400 text-sm mb-6">
+          <p className="text-white/70 mb-2 font-medium">No groups yet</p>
+          <p className="text-white/40 text-sm mb-6">
             Create a group and invite your friends, or join one with an invite code.
           </p>
           <div className="flex gap-3 justify-center">
@@ -49,20 +49,20 @@ export default async function GroupsPage() {
               <Link
                 key={m.groupId}
                 href={`/groups/${m.groupId}`}
-                className="card hover:shadow-md hover:border-ski-light transition-all"
+                className="glass-card hover:border-white/30 hover:shadow-xl transition-all"
               >
                 <div className="flex justify-between items-start mb-2">
-                  <h2 className="font-bold text-ski-blue text-lg">{m.group.name}</h2>
+                  <h2 className="font-bold text-white text-lg">{m.group.name}</h2>
                   {isOwner && (
                     <span className="badge badge-blue">Owner</span>
                   )}
                 </div>
-                <p className="text-gray-500 text-sm">
+                <p className="text-white/50 text-sm">
                   {m.group._count.members} member{m.group._count.members !== 1 ? "s" : ""} ·{" "}
                   {m.group._count.predictions} prediction{m.group._count.predictions !== 1 ? "s" : ""}
                 </p>
-                <p className="text-xs text-gray-400 mt-2">
-                  Invite code: <span className="font-mono font-bold">{m.group.inviteCode}</span>
+                <p className="text-xs text-white/40 mt-2">
+                  Invite code: <span className="font-mono font-bold text-white/70">{m.group.inviteCode}</span>
                 </p>
               </Link>
             );

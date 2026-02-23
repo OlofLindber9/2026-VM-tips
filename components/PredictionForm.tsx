@@ -121,14 +121,14 @@ export default function PredictionForm({
     const medals = ["🥇", "🥈", "🥉"];
     return (
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-1.5">
           {medals[position - 1]} {label}
         </label>
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={isLocked}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ski-light bg-white disabled:bg-gray-50 disabled:text-gray-400"
+          className="select-dark"
         >
           <option value="">— select athlete —</option>
           {filteredAthletes.map((a) => (
@@ -142,9 +142,9 @@ export default function PredictionForm({
   }
 
   return (
-    <div className="card space-y-5">
+    <div className="glass-card space-y-5">
       <div className="flex items-center justify-between">
-        <h2 className="font-bold text-ski-blue">
+        <h2 className="font-bold text-white">
           {isLocked ? "Your prediction" : "Make your prediction"}
         </h2>
         {existing?.score !== null && existing?.score !== undefined && (
@@ -155,11 +155,11 @@ export default function PredictionForm({
       {/* Group selector */}
       {groups.length > 1 && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Group</label>
+          <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-1.5">Group</label>
           <select
             value={selectedGroup}
             onChange={(e) => handleGroupChange(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ski-light bg-white"
+            className="select-dark"
           >
             {groups.map((g) => (
               <option key={g.id} value={g.id}>
@@ -180,10 +180,11 @@ export default function PredictionForm({
           ].map(({ pos, id }) => {
             const medals = ["🥇", "🥈", "🥉"];
             return (
-              <div key={pos} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <div key={pos} className="flex items-center gap-3 p-3 rounded-xl border border-white/10"
+                style={{ background: "rgba(255,255,255,0.06)" }}>
                 <span className="text-xl">{medals[pos - 1]}</span>
-                <span className="font-medium">{athleteName(id)}</span>
-                <span className="text-gray-400 text-sm ml-auto">
+                <span className="font-medium text-white/90">{athleteName(id)}</span>
+                <span className="text-white/40 text-sm ml-auto">
                   {athletePool.find((a) => a.id === id)?.nationCode}
                 </span>
               </div>
@@ -191,7 +192,7 @@ export default function PredictionForm({
           })}
         </div>
       ) : isLocked ? (
-        <p className="text-sm text-gray-400 text-center py-4">
+        <p className="text-sm text-white/40 text-center py-4">
           Predictions are closed for this race.
         </p>
       ) : (
@@ -203,7 +204,7 @@ export default function PredictionForm({
                 placeholder="Search athletes…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ski-light"
+                className="input-dark"
               />
             </div>
           )}
@@ -213,10 +214,10 @@ export default function PredictionForm({
           <AthleteSelect label="3rd place" value={third} onChange={setThird} position={3} />
 
           {error && (
-            <div className="text-red-600 text-sm bg-red-50 rounded-lg px-3 py-2">{error}</div>
+            <div className="text-red-300 text-sm bg-red-900/30 border border-red-500/30 rounded-xl px-4 py-2.5">{error}</div>
           )}
           {success && (
-            <div className="text-green-600 text-sm bg-green-50 rounded-lg px-3 py-2">
+            <div className="text-emerald-300 text-sm bg-emerald-900/30 border border-emerald-500/30 rounded-xl px-4 py-2.5">
               Prediction saved!
             </div>
           )}
@@ -226,7 +227,7 @@ export default function PredictionForm({
           </button>
 
           {existing && !isLocked && (
-            <p className="text-xs text-gray-400 text-center">
+            <p className="text-xs text-white/40 text-center">
               You already have a prediction for this group — submitting will update it.
             </p>
           )}
@@ -234,7 +235,7 @@ export default function PredictionForm({
       )}
 
       {!isLocked && !existing && athletePool.length === 0 && (
-        <p className="text-sm text-gray-400 text-center py-4">
+        <p className="text-sm text-white/40 text-center py-4">
           Athlete list not available yet. Check back closer to race day.
         </p>
       )}

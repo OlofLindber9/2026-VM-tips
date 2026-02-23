@@ -101,7 +101,7 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
       {/* Race header */}
-      <div className="card">
+      <div className="glass-card">
         <div className="flex flex-wrap gap-2 mb-3">
           <span className={`badge ${disciplineColor(race.discipline)}`}>{race.discipline}</span>
           <span className={`badge ${race.gender === "W" ? "badge-yellow" : "badge-blue"}`}>
@@ -111,8 +111,8 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
           {!isCompleted && isPast && <span className="badge badge-gray">Past</span>}
           {!isPast && <span className="badge badge-blue">Upcoming</span>}
         </div>
-        <h1 className="text-2xl font-bold text-ski-blue">{race.name}</h1>
-        <p className="text-gray-500 mt-1">
+        <h1 className="text-2xl font-bold text-white">{race.name}</h1>
+        <p className="text-white/50 mt-1">
           {format(race.date)} · {race.venue}, {race.country}
         </p>
 
@@ -128,16 +128,16 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
 
       {/* Official results */}
       {podium && (
-        <div className="card">
-          <h2 className="font-bold text-ski-blue mb-4">Official results</h2>
+        <div className="glass-card">
+          <h2 className="font-bold text-white mb-4">Official results</h2>
           <ResultsPodium results={race.results.slice(0, 10)} />
         </div>
       )}
 
       {/* Predictions section */}
       {memberships.length === 0 ? (
-        <div className="card text-center py-8">
-          <p className="text-gray-500 mb-3">Join or create a group to make predictions.</p>
+        <div className="glass-card text-center py-8">
+          <p className="text-white/50 mb-3">Join or create a group to make predictions.</p>
           <div className="flex gap-3 justify-center">
             <a href="/groups/create" className="btn-primary text-sm">Create group</a>
             <a href="/groups/join" className="btn-secondary text-sm">Join group</a>

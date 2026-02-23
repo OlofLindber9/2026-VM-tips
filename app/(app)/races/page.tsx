@@ -46,8 +46,8 @@ export default async function RacesPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-ski-blue">2025/26 Season</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+        <h1 className="text-2xl font-bold text-white">2025/26 Season</h1>
         <div className="flex gap-2">
           <form action={syncResultsAction}>
             <button type="submit" className="btn-primary text-sm">
@@ -63,10 +63,10 @@ export default async function RacesPage() {
       </div>
 
       {races.length === 0 && (
-        <div className="card text-center py-12">
+        <div className="glass-card text-center py-12">
           <div className="text-4xl mb-3">📅</div>
-          <p className="text-gray-500 mb-4">Could not load races from FIS.</p>
-          <p className="text-sm text-gray-400">
+          <p className="text-white/50 mb-4">Could not load races from FIS.</p>
+          <p className="text-sm text-white/40">
             Check your internet connection and try refreshing.
           </p>
         </div>
@@ -74,7 +74,7 @@ export default async function RacesPage() {
 
       {upcoming.length > 0 && (
         <section>
-          <h2 className="font-bold text-lg text-gray-700 mb-3">Upcoming</h2>
+          <h2 className="font-bold text-lg text-white/70 mb-3">Upcoming</h2>
           <div className="grid gap-3">
             {upcoming.map((race) => (
               <RaceCard key={race.id} race={race} />
@@ -85,7 +85,7 @@ export default async function RacesPage() {
 
       {past.length > 0 && (
         <section>
-          <h2 className="font-bold text-lg text-gray-700 mb-3">Past</h2>
+          <h2 className="font-bold text-lg text-white/70 mb-3">Past</h2>
           <div className="grid gap-3">
             {past.map((race) => (
               <RaceCard key={race.id} race={race} />
@@ -120,10 +120,10 @@ function RaceCard({
   return (
     <Link
       href={`/races/${race.id}`}
-      className={`card hover:border-ski-light hover:shadow-md transition-all flex items-center justify-between gap-4 ${isPast && !isCompleted ? "opacity-60" : ""}`}
+      className={`glass-card hover:border-white/30 hover:shadow-xl transition-all flex items-center justify-between gap-4 ${isPast && !isCompleted ? "opacity-50" : ""}`}
     >
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex flex-wrap items-center gap-1.5 mb-1">
           <span className={`badge ${disciplineColor(race.discipline)}`}>
             {race.discipline}
           </span>
@@ -133,17 +133,17 @@ function RaceCard({
           {isCompleted && <span className="badge badge-green">Completed</span>}
           {!isCompleted && isPast && <span className="badge badge-gray">Past</span>}
         </div>
-        <div className="font-semibold text-ski-blue truncate">{race.name}</div>
-        <div className="text-sm text-gray-400 mt-0.5">
+        <div className="font-semibold text-white truncate">{race.name}</div>
+        <div className="text-sm text-white/40 mt-0.5">
           {format(race.date)} · {race.venue}, {race.country}
         </div>
         {winner && (
-          <div className="text-sm text-gray-500 mt-1">
-            🥇 {winner.name} <span className="text-gray-400">({winner.nationCode})</span>
+          <div className="text-sm text-white/50 mt-1">
+            🥇 {winner.name} <span className="text-white/30">({winner.nationCode})</span>
           </div>
         )}
       </div>
-      <div className="text-right text-xs text-gray-400 shrink-0">
+      <div className="text-right text-xs text-white/40 shrink-0">
         <div>{race._count.predictions} predictions</div>
       </div>
     </Link>
