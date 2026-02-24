@@ -11,11 +11,23 @@ export function disciplineColor(discipline: string): string {
   if (d.includes("sprint")) return "badge-yellow";
   if (d.includes("relay")) return "badge-red";
   if (d.includes("skiathlon") || d.includes("pursuit")) return "badge-green";
-  return "badge-blue";
+  if (d.includes("mass start")) return "badge-purple";
+  return "badge-blue"; // distance races (10km, 15km, 30km, etc.)
+}
+
+export function techniqueColor(technique: string): string {
+  const t = technique.toLowerCase();
+  if (t === "classic") return "badge-purple";
+  if (t === "free") return "badge-green";
+  return "badge-gray";
 }
 
 export function genderLabel(gender: string): string {
   return gender === "W" ? "Women" : "Men";
+}
+
+export function genderColor(gender: string): string {
+  return gender === "W" ? "badge-rose" : "badge-teal";
 }
 
 /** FIS Cross-Country WC points per finishing position (1st–30th). */

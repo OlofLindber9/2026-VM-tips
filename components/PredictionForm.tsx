@@ -29,6 +29,177 @@ interface Props {
   locked?: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Custom athlete picker — extracted so it can safely use its own hooks
+// ---------------------------------------------------------------------------
+
+interface AthleteSelectProps {
+  label: string;
+  value: string;
+  onChange: (id: string) => void;
+  position: number;
+  athletes: Athlete[];
+  disabled: boolean;
+}
+
+function AthleteSelect({ label, value, onChange, position, athletes, disabled }: AthleteSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const medals = ["🥇", "🥈", "🥉"];
+  const selected = athletes.find((a) => a.id === value);
+  const filtered = athletes.filter(
+    (a) =>
+      search === "" ||
+      a.name.toLowerCase().includes(search.toLowerCase()) ||
+      a.nationCode.toLowerCase().includes(search.toLowerCase())
+  );
+
+  function open() {
+    if (disabled) return;
+    setIsOpen(true);
+    setSearch("");
+  }
+
+  function close() {
+    setIsOpen(false);
+    setSearch("");
+  }
+
+  function handleSelect(id: string) {
+    onChange(id);
+    close();
+  }
+
+  return (
+    <div className="relative">
+      <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-1.5">
+        {medals[position - 1]} {label}
+      </label>
+
+      {/* Trigger button */}
+      <button
+        type="button"
+        onClick={isOpen ? close : open}
+        disabled={disabled}
+        className="w-full flex items-center justify-between rounded-xl px-4 py-2.5 text-sm transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+        style={{
+          background: "rgba(255,255,255,0.08)",
+          border: selected
+            ? "1px solid rgba(232,160,32,0.5)"
+            : "1px solid rgba(255,255,255,0.15)",
+        }}
+      >
+        {selected ? (
+          <span className="flex items-center gap-2 min-w-0">
+            <span className="text-white font-medium truncate">{selected.name}</span>
+            <span
+              className="text-xs shrink-0 px-1.5 py-0.5 rounded-md font-semibold"
+              style={{
+                background: "rgba(232,160,32,0.15)",
+                color: "rgb(232,160,32)",
+              }}
+            >
+              {selected.nationCode}
+            </span>
+          </span>
+        ) : (
+          <span className="text-white/35">— select athlete —</span>
+        )}
+        <svg
+          className={`w-4 h-4 text-white/40 shrink-0 ml-2 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {/* Dropdown */}
+      {isOpen && (
+        <>
+          {/* Backdrop — closes dropdown on outside click */}
+          <div className="fixed inset-0 z-40" onClick={close} />
+
+          <div
+            className="absolute left-0 right-0 mt-1.5 z-50 rounded-xl overflow-hidden shadow-2xl"
+            style={{
+              background: "rgba(6,16,32,0.98)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
+            }}
+          >
+            {/* Search */}
+            <div className="p-2 border-b border-white/8">
+              <input
+                type="text"
+                placeholder="Search athletes…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                className="input-dark py-2 text-sm"
+                autoFocus
+              />
+            </div>
+
+            {/* Options */}
+            <div className="max-h-60 overflow-y-auto overscroll-contain">
+              {filtered.length === 0 ? (
+                <div className="px-4 py-4 text-sm text-white/30 text-center">No athletes found</div>
+              ) : (
+                filtered.map((a) => {
+                  const isSelected = a.id === value;
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => handleSelect(a.id)}
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors duration-100"
+                      style={
+                        isSelected
+                          ? { background: "rgba(232,160,32,0.12)", color: "rgb(245,200,66)" }
+                          : { color: "rgba(255,255,255,0.75)" }
+                      }
+                      onMouseEnter={(e) => {
+                        if (!isSelected)
+                          e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected) e.currentTarget.style.background = "";
+                      }}
+                    >
+                      <span className="font-medium truncate">{a.name}</span>
+                      <span
+                        className="text-xs shrink-0 ml-3 px-1.5 py-0.5 rounded-md font-semibold"
+                        style={
+                          isSelected
+                            ? { background: "rgba(232,160,32,0.2)", color: "rgb(232,160,32)" }
+                            : {
+                                background: "rgba(255,255,255,0.08)",
+                                color: "rgba(255,255,255,0.4)",
+                              }
+                        }
+                      >
+                        {a.nationCode}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main form
+// ---------------------------------------------------------------------------
+
 export default function PredictionForm({
   race,
   groups,
@@ -37,20 +208,21 @@ export default function PredictionForm({
   locked = false,
 }: Props) {
   const [selectedGroup, setSelectedGroup] = useState(groups[0]?.id || "");
-  const [first, setFirst] = useState("");
-  const [second, setSecond] = useState("");
-  const [third, setThird] = useState("");
+
+  // Pre-fill form from the existing prediction for the initial group
+  const initialPred = existingPredictions.find((p) => p.groupId === groups[0]?.id);
+  const [first, setFirst] = useState(initialPred?.first || "");
+  const [second, setSecond] = useState(initialPred?.second || "");
+  const [third, setThird] = useState(initialPred?.third || "");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
 
   const isCompleted = race.status === "completed";
   const isLocked = isCompleted || locked;
 
   const existing = existingPredictions.find((p) => p.groupId === selectedGroup);
 
-  // Pre-fill when switching groups
   function handleGroupChange(groupId: string) {
     setSelectedGroup(groupId);
     const pred = existingPredictions.find((p) => p.groupId === groupId);
@@ -67,14 +239,12 @@ export default function PredictionForm({
     setError("");
   }
 
-  const filteredAthletes = athletePool.filter((a) =>
-    search === "" ||
-    a.name.toLowerCase().includes(search.toLowerCase()) ||
-    a.nationCode.toLowerCase().includes(search.toLowerCase())
-  );
-
   function athleteName(id: string) {
     return athletePool.find((a) => a.id === id)?.name || id;
+  }
+
+  function athleteNation(id: string) {
+    return athletePool.find((a) => a.id === id)?.nationCode || "";
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -107,46 +277,37 @@ export default function PredictionForm({
     }
   }
 
-  function AthleteSelect({
-    label,
-    value,
-    onChange,
-    position,
-  }: {
-    label: string;
-    value: string;
-    onChange: (v: string) => void;
-    position: number;
-  }) {
-    const medals = ["🥇", "🥈", "🥉"];
-    return (
-      <div>
-        <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-1.5">
-          {medals[position - 1]} {label}
-        </label>
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={isLocked}
-          className="select-dark"
-        >
-          <option value="">— select athlete —</option>
-          {filteredAthletes.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name} ({a.nationCode})
-            </option>
-          ))}
-        </select>
-      </div>
-    );
-  }
-
   return (
-    <div className="glass-card space-y-5">
+    <div
+      className="glass-card space-y-5"
+      style={existing && !isLocked ? { borderColor: "rgba(52, 211, 153, 0.35)" } : undefined}
+    >
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="font-bold text-white">
-          {isLocked ? "Your prediction" : "Make your prediction"}
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="font-bold text-white">
+            {isLocked || existing ? "Your prediction" : "Make your prediction"}
+          </h2>
+          {existing && !isLocked && (
+            <span
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border"
+              style={{
+                background: "rgba(52, 211, 153, 0.12)",
+                borderColor: "rgba(52, 211, 153, 0.3)",
+                color: "rgb(110, 231, 183)",
+              }}
+            >
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Submitted
+            </span>
+          )}
+        </div>
         {existing?.score !== null && existing?.score !== undefined && (
           <span className="text-ski-accent font-bold text-lg">{existing.score} pts</span>
         )}
@@ -155,7 +316,9 @@ export default function PredictionForm({
       {/* Group selector */}
       {groups.length > 1 && (
         <div>
-          <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-1.5">Group</label>
+          <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-1.5">
+            Group
+          </label>
           <select
             value={selectedGroup}
             onChange={(e) => handleGroupChange(e.target.value)}
@@ -170,7 +333,37 @@ export default function PredictionForm({
         </div>
       )}
 
-      {/* Read-only prediction summary (race is locked — past or completed) */}
+      {/* Current picks summary — shown when prediction exists and race is still editable */}
+      {existing && !isLocked && (
+        <div
+          className="rounded-xl p-3 space-y-2"
+          style={{
+            background: "rgba(52, 211, 153, 0.06)",
+            border: "1px solid rgba(52, 211, 153, 0.2)",
+          }}
+        >
+          <p
+            className="text-xs font-semibold uppercase tracking-wider"
+            style={{ color: "rgba(110, 231, 183, 0.65)" }}
+          >
+            Current picks
+          </p>
+          {[
+            { medal: "🥇", id: existing.first },
+            { medal: "🥈", id: existing.second },
+            { medal: "🥉", id: existing.third },
+          ].map(({ medal, id }) => (
+            <div key={id} className="flex items-center gap-2">
+              <span className="text-base leading-none">{medal}</span>
+              <span className="text-sm text-white/85 font-medium">{athleteName(id)}</span>
+              <span className="ml-auto text-xs text-white/35">{athleteNation(id)}</span>
+            </div>
+          ))}
+          <p className="text-xs text-white/30 pt-0.5">Use the dropdowns below to change</p>
+        </div>
+      )}
+
+      {/* Read-only prediction summary — race is locked (past or completed) */}
       {isLocked && existing ? (
         <div className="space-y-2">
           {[
@@ -180,13 +373,14 @@ export default function PredictionForm({
           ].map(({ pos, id }) => {
             const medals = ["🥇", "🥈", "🥉"];
             return (
-              <div key={pos} className="flex items-center gap-3 p-3 rounded-xl border border-white/10"
-                style={{ background: "rgba(255,255,255,0.06)" }}>
+              <div
+                key={pos}
+                className="flex items-center gap-3 p-3 rounded-xl border border-white/10"
+                style={{ background: "rgba(255,255,255,0.06)" }}
+              >
                 <span className="text-xl">{medals[pos - 1]}</span>
                 <span className="font-medium text-white/90">{athleteName(id)}</span>
-                <span className="text-white/40 text-sm ml-auto">
-                  {athletePool.find((a) => a.id === id)?.nationCode}
-                </span>
+                <span className="text-white/40 text-sm ml-auto">{athleteNation(id)}</span>
               </div>
             );
           })}
@@ -197,24 +391,35 @@ export default function PredictionForm({
         </p>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          {athletePool.length > 10 && (
-            <div>
-              <input
-                type="text"
-                placeholder="Search athletes…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="input-dark"
-              />
-            </div>
-          )}
-
-          <AthleteSelect label="Winner (1st)" value={first} onChange={setFirst} position={1} />
-          <AthleteSelect label="2nd place" value={second} onChange={setSecond} position={2} />
-          <AthleteSelect label="3rd place" value={third} onChange={setThird} position={3} />
+          <AthleteSelect
+            label="Winner (1st)"
+            value={first}
+            onChange={setFirst}
+            position={1}
+            athletes={athletePool}
+            disabled={isLocked}
+          />
+          <AthleteSelect
+            label="2nd place"
+            value={second}
+            onChange={setSecond}
+            position={2}
+            athletes={athletePool}
+            disabled={isLocked}
+          />
+          <AthleteSelect
+            label="3rd place"
+            value={third}
+            onChange={setThird}
+            position={3}
+            athletes={athletePool}
+            disabled={isLocked}
+          />
 
           {error && (
-            <div className="text-red-300 text-sm bg-red-900/30 border border-red-500/30 rounded-xl px-4 py-2.5">{error}</div>
+            <div className="text-red-300 text-sm bg-red-900/30 border border-red-500/30 rounded-xl px-4 py-2.5">
+              {error}
+            </div>
           )}
           {success && (
             <div className="text-emerald-300 text-sm bg-emerald-900/30 border border-emerald-500/30 rounded-xl px-4 py-2.5">
@@ -225,12 +430,6 @@ export default function PredictionForm({
           <button type="submit" disabled={loading || isLocked} className="btn-primary w-full">
             {loading ? "Saving…" : existing ? "Update prediction" : "Submit prediction"}
           </button>
-
-          {existing && !isLocked && (
-            <p className="text-xs text-white/40 text-center">
-              You already have a prediction for this group — submitting will update it.
-            </p>
-          )}
         </form>
       )}
 
