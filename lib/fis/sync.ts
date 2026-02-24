@@ -5,6 +5,7 @@ import {
   fetchResults,
   fetchWcStandings,
   buildRaceName,
+  type FisEventRace,
 } from "./fetcher";
 import { calculateScore, getPodiumFromResults } from "@/lib/scoring";
 
@@ -49,7 +50,7 @@ export async function syncCalendar(): Promise<number> {
   for (const eventId of uniqueEventIds) {
     const meta = eventMeta.get(eventId)!;
 
-    let races;
+    let races: FisEventRace[];
     try {
       races = await fetchEventRaces(eventId, seasonCode);
     } catch {
