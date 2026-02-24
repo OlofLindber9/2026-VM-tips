@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { syncCalendar, syncCompletedRaces } from "@/lib/fis/sync";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
-import { format, disciplineColor, genderLabel } from "@/lib/utils";
+import { format, disciplineColor, techniqueColor, genderLabel, genderColor } from "@/lib/utils";
 
 async function refreshCalendarAction() {
   "use server";
@@ -107,6 +107,7 @@ function RaceCard({
     country: string;
     date: Date;
     discipline: string;
+    technique?: string;
     gender: string;
     status: string;
     _count: { predictions: number; results: number };
@@ -127,7 +128,10 @@ function RaceCard({
           <span className={`badge ${disciplineColor(race.discipline)}`}>
             {race.discipline}
           </span>
-          <span className={`badge ${race.gender === "W" ? "badge-yellow" : "badge-blue"}`}>
+          {race.technique && race.technique !== "Skiathlon" && (
+            <span className={`badge ${techniqueColor(race.technique)}`}>{race.technique}</span>
+          )}
+          <span className={`badge ${genderColor(race.gender)}`}>
             {genderLabel(race.gender)}
           </span>
           {isCompleted && <span className="badge badge-green">Completed</span>}

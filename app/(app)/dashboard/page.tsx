@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { format } from "@/lib/utils";
+import { format, genderLabel, genderColor } from "@/lib/utils";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -72,8 +72,8 @@ export default async function DashboardPage() {
                       {format(race.date)} · {race.country}
                     </div>
                   </div>
-                  <span className={`badge ${race.gender === "W" ? "badge-yellow" : "badge-blue"}`}>
-                    {race.gender === "W" ? "Women" : "Men"}
+                  <span className={`badge ${genderColor(race.gender)}`}>
+                    {genderLabel(race.gender)}
                   </span>
                 </Link>
               ))}

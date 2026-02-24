@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
-import { format, disciplineColor, genderLabel } from "@/lib/utils";
+import { format, disciplineColor, techniqueColor, genderLabel, genderColor } from "@/lib/utils";
 import PredictionForm from "@/components/PredictionForm";
 import ResultsPodium from "@/components/ResultsPodium";
 import { fetchAthletePool } from "@/lib/fis/fetcher";
@@ -21,17 +21,10 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
     "use server";
     const meta = await prisma.race.findUnique({
       where: { id },
-      select: { fisRaceIds: true },
+      select: { fisRaceId: true },
     });
-    if (!meta) return;
-    for (const fisRaceId of meta.fisRaceIds) {
-      try {
-        const { results } = await syncRaceResults(id, fisRaceId);
-        if (results >= 3) break;
-      } catch {
-        // ignore individual failures
-      }
-    }
+    if (!meta?.fisRaceId) return;
+    await syncRaceResults(id, meta.fisRaceId).catch(() => {});
     revalidatePath(`/races/${id}`);
   }
 
@@ -85,7 +78,7 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
 
   const isCompleted = race.status === "completed";
   const isPast = isCompleted || race.date < new Date();
-  const canSyncResults = isPast && !isCompleted && race.fisRaceIds.length > 0;
+  const canSyncResults = isPast && !isCompleted && !!race.fisRaceId;
 
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
@@ -93,7 +86,10 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
       <div className="glass-card">
         <div className="flex flex-wrap gap-2 mb-3">
           <span className={`badge ${disciplineColor(race.discipline)}`}>{race.discipline}</span>
-          <span className={`badge ${race.gender === "W" ? "badge-yellow" : "badge-blue"}`}>
+          {race.technique && race.technique !== "Skiathlon" && (
+            <span className={`badge ${techniqueColor(race.technique)}`}>{race.technique}</span>
+          )}
+          <span className={`badge ${genderColor(race.gender)}`}>
             {genderLabel(race.gender)}
           </span>
           {isCompleted && <span className="badge badge-green">Completed</span>}

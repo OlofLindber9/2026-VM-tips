@@ -1,5 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import { fetchCalendar, fetchEventRaceIds, fetchResults } from "./fetcher";
+import {
+  fetchCalendar,
+  fetchEventRaces,
+  fetchResults,
+  fetchWcStandings,
+  buildRaceName,
+} from "./fetcher";
 import { calculateScore, getPodiumFromResults } from "@/lib/scoring";
 
 /** Current FIS season code (ending year, e.g. 2026 = 2025-26 season) */
@@ -11,54 +17,96 @@ export function currentSeasonCode(): string {
 }
 
 /**
- * Fetch the FIS calendar and upsert races into the DB.
- * Race IDs are discovered dynamically by fetching each event's detail page on
- * the FIS website, so no manual hardcoding is needed as new events are added.
+ * Fetch the FIS calendar and upsert individual races into the DB.
+ *
+ * For each event in the calendar we call the event detail page to get every
+ * individual race (Sprint Classic, 10km Free, Skiathlon, etc.).  Each
+ * individual race becomes one DB row with id = "fis-{fisRaceId}".
+ *
+ * Qualification, relay, and team-sprint races are excluded automatically by
+ * the fetcher.  Old-format race rows (id not starting with "fis-") that have
+ * no predictions or results are cleaned up on each sync.
  */
 export async function syncCalendar(): Promise<number> {
   const seasonCode = currentSeasonCode();
-  const races = await fetchCalendar(seasonCode);
+  const season = `${parseInt(seasonCode) - 1}-${seasonCode}`;
 
-  // Fetch race IDs once per unique event (calendar has up to 2 entries per
-  // event — one for M, one for W — so we deduplicate to halve the requests).
-  const uniqueEventIds = [...new Set(races.map((r) => r.id.split("-")[0]))];
-  const raceIdsByEvent = new Map<string, { M: string[]; W: string[] }>();
+  // Calendar gives us one placeholder per event per gender
+  // (we only need it for venue / country / date)
+  const calendarEvents = await fetchCalendar(seasonCode);
 
-  for (const eventId of uniqueEventIds) {
-    try {
-      raceIdsByEvent.set(eventId, await fetchEventRaceIds(eventId, seasonCode));
-    } catch {
-      raceIdsByEvent.set(eventId, { M: [], W: [] });
+  // Build a map eventId → { venue, country, date }
+  const eventMeta = new Map<string, { venue: string; country: string; date: Date }>();
+  for (const ev of calendarEvents) {
+    if (!eventMeta.has(ev.eventId)) {
+      eventMeta.set(ev.eventId, { venue: ev.venue, country: ev.country, date: ev.date });
     }
   }
 
-  for (const race of races) {
-    const eventId = race.id.split("-")[0];
-    const gender = race.gender as "M" | "W";
-    const fisRaceIds = raceIdsByEvent.get(eventId)?.[gender] ?? [];
+  const uniqueEventIds = [...eventMeta.keys()];
+  let total = 0;
 
-    await prisma.race.upsert({
-      where: { id: race.id },
-      update: {
-        name: race.name,
-        venue: race.venue,
-        country: race.country,
-        date: race.date,
-        discipline: race.discipline,
-        gender: race.gender,
-        fisRaceIds,
-      },
-      create: { ...race, fisRaceIds },
-    });
+  for (const eventId of uniqueEventIds) {
+    const meta = eventMeta.get(eventId)!;
+
+    let races;
+    try {
+      races = await fetchEventRaces(eventId, seasonCode);
+    } catch {
+      races = [];
+    }
+
+    for (const race of races) {
+      const raceId = `fis-${race.fisRaceId}`;
+      const name = buildRaceName(race.gender, race.discipline, race.technique, meta.venue);
+
+      await prisma.race.upsert({
+        where: { id: raceId },
+        update: {
+          name,
+          venue: meta.venue,
+          country: meta.country,
+          date: meta.date,
+          discipline: race.discipline,
+          technique: race.technique,
+          gender: race.gender,
+          fisRaceId: race.fisRaceId,
+          eventId,
+        },
+        create: {
+          id: raceId,
+          name,
+          venue: meta.venue,
+          country: meta.country,
+          date: meta.date,
+          discipline: race.discipline,
+          technique: race.technique,
+          gender: race.gender,
+          season,
+          fisRaceId: race.fisRaceId,
+          eventId,
+        },
+      });
+      total++;
+    }
   }
 
-  return races.length;
+  // Remove old-format races (legacy "{eventId}-{gender}" IDs) that have no
+  // predictions or results attached — safe one-time migration cleanup.
+  await prisma.race.deleteMany({
+    where: {
+      NOT: { id: { startsWith: "fis-" } },
+      predictions: { none: {} },
+      results: { none: {} },
+    },
+  });
+
+  return total;
 }
 
 /**
  * Sync results for one DB race using the given FIS race ID.
  * Upserts athletes + results, marks the race completed, and scores predictions.
- * Returns { results: number; scored: number }.
  */
 export async function syncRaceResults(
   raceId: string,
@@ -112,30 +160,34 @@ export async function syncRaceResults(
   return { results: fisResults.length, scored };
 }
 
-
 /**
- * Sync WC standings for both genders from FIS and update athlete wcPoints in DB.
- * Called automatically after syncCompletedRaces so the athlete pool stays current.
+ * Sync WC standings for both genders and update athlete wcPoints in DB.
  */
 export async function syncWcStandings(): Promise<{ men: number; women: number }> {
   const seasonCode = currentSeasonCode();
   let men = 0;
   let women = 0;
 
-  for (const gender of ['M', 'W'] as const) {
+  for (const gender of ["M", "W"] as const) {
     try {
       const standings = await fetchWcStandings(gender, seasonCode);
       for (const s of standings) {
         await prisma.athlete.upsert({
           where: { id: s.athleteId },
           update: { name: s.athleteName, nationCode: s.nationCode, gender, wcPoints: s.points },
-          create: { id: s.athleteId, name: s.athleteName, nationCode: s.nationCode, gender, wcPoints: s.points },
+          create: {
+            id: s.athleteId,
+            name: s.athleteName,
+            nationCode: s.nationCode,
+            gender,
+            wcPoints: s.points,
+          },
         });
       }
-      if (gender === 'M') men = standings.length;
+      if (gender === "M") men = standings.length;
       else women = standings.length;
     } catch {
-      // Non-fatal — standings sync failure does not block result sync
+      // Non-fatal
     }
   }
 
@@ -143,43 +195,32 @@ export async function syncWcStandings(): Promise<{ men: number; women: number }>
 }
 
 /**
- * Auto-sync results for all past races that are still marked "upcoming".
- * For each such race, tries each fisRaceId in order and uses the first one
- * that returns a valid podium (≥ 3 ranked finishers).
- *
- * Safe to call on page load — only fetches from FIS when a race actually needs
- * syncing. Once a race is marked "completed" it is skipped on all future calls.
+ * Auto-sync results for all past races still marked "upcoming".
+ * Safe to call on page load — skips races already completed.
  */
 export async function syncCompletedRaces(): Promise<{ synced: number }> {
   const now = new Date();
 
-  // Only races whose date has passed, are still upcoming, and have known FIS IDs
   const pendingRaces = await prisma.race.findMany({
     where: {
       status: "upcoming",
       date: { lt: now },
-      fisRaceIds: { isEmpty: false },
+      fisRaceId: { not: "" },
     },
   });
 
   let synced = 0;
   for (const race of pendingRaces) {
-    for (const fisRaceId of race.fisRaceIds) {
-      try {
-        const { results } = await syncRaceResults(race.id, fisRaceId);
-        if (results >= 3) {
-          synced++;
-          break; // Valid podium found — stop trying other IDs for this race
-        }
-      } catch {
-        // Ignore individual FIS fetch failures
-      }
+    try {
+      const { results } = await syncRaceResults(race.id, race.fisRaceId);
+      if (results >= 3) synced++;
+    } catch {
+      // ignore individual FIS fetch failures
     }
   }
 
-  // Keep the athlete pool sorted by real standings after any race is processed
   if (synced > 0) {
-    await syncWcStandings().catch(() => {}); // non-fatal
+    await syncWcStandings().catch(() => {});
   }
 
   return { synced };

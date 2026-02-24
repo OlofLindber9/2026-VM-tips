@@ -85,7 +85,13 @@
     @apply badge bg-white/10 text-white/55 border border-white/15;
   }
   .badge-purple {
-    @apply badge bg-purple-400/20 text-purple-200 border border-purple-400/25;
+    @apply badge bg-purple-400/20 text-purple-200 border border-purple-500/50;
+  }
+  .badge-rose {
+    @apply badge bg-rose-400/20 text-rose-200 border border-rose-400/40;
+  }
+  .badge-teal {
+    @apply badge bg-teal-400/20 text-teal-200 border border-teal-400/40;
   }
 
   /* ─── Text effects ────────────────────────────────────────────── */
