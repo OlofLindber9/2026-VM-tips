@@ -48,7 +48,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Upcoming races */}
+        {/* Upcoming races  */}
         <div className="glass-card col-span-full lg:col-span-2">
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-bold text-white">Upcoming races</h2>
