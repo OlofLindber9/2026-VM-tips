@@ -94,9 +94,11 @@ export async function fetchEventRaces(
 
 /** Fetch results for a race by its FIS race ID */
 export async function fetchResults(raceId: string): Promise<FisResult[]> {
+  // data.fis-ski.com uses numeric IDs; strip any sector-code prefix (e.g. "CC49511" → "49511")
+  const numericId = raceId.replace(/^[A-Z]{1,3}/i, "");
   const url =
     `${BASE}/fis_events/ajax/raceresultsfunctions/details.html` +
-    `?sectorcode=CC&raceid=${raceId}&competitors=`;
+    `?sectorcode=CC&raceid=${numericId}&competitors=`;
 
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; SkiPredictor/1.0)" },
@@ -130,9 +132,10 @@ function parseEventRaces(html: string, eventStartDate?: Date): FisEventRace[] {
   $("#eventdetailscontent .table-row").each((_, row) => {
     const $row = $(row);
 
-    // Extract FIS race ID from the result link
+    // Extract FIS race ID from the result link.
+    // IDs can be numeric ("49467") or sector-prefixed ("CC49511") depending on season/status.
     const href = $row.find("a[href*='raceid=']").first().attr("href") || "";
-    const match = href.match(/[?&]raceid=(\d+)/);
+    const match = href.match(/[?&]raceid=([A-Z]{0,3}\d+)/i);
     if (!match) return;
     const fisRaceId = match[1];
 
@@ -156,10 +159,28 @@ function parseEventRaces(html: string, eventStartDate?: Date): FisEventRace[] {
     const technique = extractTechnique(rowText, discipline);
     const gender: "M" | "W" = isW ? "W" : "M";
 
-    // Try to extract the individual race date from this row (e.g. "01 MAR", "28 FEB")
-    const date = eventStartDate
-      ? parseRaceDateFromRowText(rowText, eventStartDate) ?? undefined
-      : undefined;
+    // Try to extract the individual race date, checking multiple sources in priority order.
+    let date: Date | undefined;
+    if (eventStartDate) {
+      // 1. HTML5 <time datetime="YYYY-MM-DD"> — most reliable on modern FIS pages
+      const timeEl = $row.find("time[datetime]").first();
+      if (timeEl.length > 0) {
+        date = parseISODate(timeEl.attr("datetime") ?? "") ?? undefined;
+      }
+
+      // 2. data-date / data-racedate attributes on the row element itself
+      if (!date) {
+        date =
+          parseISODate($row.attr("data-date") ?? "") ??
+          parseISODate($row.attr("data-racedate") ?? "") ??
+          undefined;
+      }
+
+      // 3. Text-based patterns (ISO, European, month-name)
+      if (!date) {
+        date = parseRaceDateFromRowText(rowText, eventStartDate) ?? undefined;
+      }
+    }
 
     races.push({ fisRaceId, discipline, technique, gender, date });
   });
@@ -167,40 +188,55 @@ function parseEventRaces(html: string, eventStartDate?: Date): FisEventRace[] {
   return races;
 }
 
+/** Parse a YYYY-MM-DD ISO string into a local Date, or return null. */
+function parseISODate(s: string): Date | null {
+  const m = s.match(/\b(20\d\d)-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b/);
+  if (!m) return null;
+  return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+}
+
 /**
  * Try to parse a specific race date from the row text on the event detail page.
- * FIS rows contain dates like "01 MAR", "28 FEB", "1 March" etc.
- * Returns null if no recognisable date is found.
+ * Tries three formats in order:
+ *   1. ISO date in text:      "2026-03-01"
+ *   2. European date in text: "01.03.2026"
+ *   3. Month-name in text:    "01 Mar", "28 February", "1 MARCH"
+ * Returns null if nothing recognisable is found or the date is not within
+ * 10 days of eventStart (sanity check against false positives).
  */
 function parseRaceDateFromRowText(rowText: string, eventStart: Date): Date | null {
+  function check(candidate: Date): Date | null {
+    const diff = (candidate.getTime() - eventStart.getTime()) / 86400000;
+    if (diff >= -1 && diff <= 10) return candidate;
+    // Retry with next year for Dec→Jan crossover events
+    const next = new Date(candidate.getFullYear() + 1, candidate.getMonth(), candidate.getDate());
+    const diffNext = (next.getTime() - eventStart.getTime()) / 86400000;
+    return diffNext >= -1 && diffNext <= 10 ? next : null;
+  }
+
+  // 1. ISO: 2026-03-01
+  const iso = parseISODate(rowText);
+  if (iso) return check(iso);
+
+  // 2. European: 01.03.2026 or 01/03/2026
+  const eu = rowText.match(/\b(0[1-9]|[12]\d|3[01])[./](0[1-9]|1[0-2])[./](20\d\d)\b/);
+  if (eu) return check(new Date(parseInt(eu[3]), parseInt(eu[2]) - 1, parseInt(eu[1])));
+
+  // 3. Month-name: "01 Mar", "28 Feb", "1 March"
   const MONTHS: Record<string, number> = {
     jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
     jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
   };
-
-  const m = rowText.match(
+  const mn = rowText.match(
     /\b(\d{1,2})\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\b/i
   );
-  if (!m) return null;
-
-  const day = parseInt(m[1]);
-  const monthKey = m[2].toLowerCase().substring(0, 3) as keyof typeof MONTHS;
-  const month = MONTHS[monthKey];
-  if (month === undefined || day < 1 || day > 31) return null;
-
-  // Use the same year as the event start. Allow the race to fall up to 10 days
-  // after the event start date (a long event weekend). If the result is wildly
-  // off, try adjusting the year (handles rare Dec→Jan crossover events).
-  const eventYear = eventStart.getFullYear();
-  const candidate = new Date(eventYear, month, day);
-  const diffDays = (candidate.getTime() - eventStart.getTime()) / 86400000;
-
-  if (diffDays >= -1 && diffDays <= 10) return candidate;
-
-  // Try next year (Dec event, Jan race)
-  const nextYear = new Date(eventYear + 1, month, day);
-  const diffNext = (nextYear.getTime() - eventStart.getTime()) / 86400000;
-  if (diffNext >= -1 && diffNext <= 10) return nextYear;
+  if (mn) {
+    const day = parseInt(mn[1]);
+    const month = MONTHS[mn[2].toLowerCase().substring(0, 3)];
+    if (month !== undefined && day >= 1 && day <= 31) {
+      return check(new Date(eventStart.getFullYear(), month, day));
+    }
+  }
 
   return null;
 }
