@@ -188,11 +188,11 @@ function parseEventRaces(html: string, eventStartDate?: Date): FisEventRace[] {
   return races;
 }
 
-/** Parse a YYYY-MM-DD ISO string into a local Date, or return null. */
+/** Parse a YYYY-MM-DD ISO string into a UTC midnight Date, or return null. */
 function parseISODate(s: string): Date | null {
   const m = s.match(/\b(20\d\d)-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b/);
   if (!m) return null;
-  return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+  return new Date(Date.UTC(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])));
 }
 
 /**
@@ -209,7 +209,7 @@ function parseRaceDateFromRowText(rowText: string, eventStart: Date): Date | nul
     const diff = (candidate.getTime() - eventStart.getTime()) / 86400000;
     if (diff >= -1 && diff <= 10) return candidate;
     // Retry with next year for Dec→Jan crossover events
-    const next = new Date(candidate.getFullYear() + 1, candidate.getMonth(), candidate.getDate());
+    const next = new Date(Date.UTC(candidate.getUTCFullYear() + 1, candidate.getUTCMonth(), candidate.getUTCDate()));
     const diffNext = (next.getTime() - eventStart.getTime()) / 86400000;
     return diffNext >= -1 && diffNext <= 10 ? next : null;
   }
@@ -220,7 +220,7 @@ function parseRaceDateFromRowText(rowText: string, eventStart: Date): Date | nul
 
   // 2. European: 01.03.2026 or 01/03/2026
   const eu = rowText.match(/\b(0[1-9]|[12]\d|3[01])[./](0[1-9]|1[0-2])[./](20\d\d)\b/);
-  if (eu) return check(new Date(parseInt(eu[3]), parseInt(eu[2]) - 1, parseInt(eu[1])));
+  if (eu) return check(new Date(Date.UTC(parseInt(eu[3]), parseInt(eu[2]) - 1, parseInt(eu[1]))));
 
   // 3. Month-name: "01 Mar", "28 Feb", "1 March"
   const MONTHS: Record<string, number> = {
@@ -234,7 +234,7 @@ function parseRaceDateFromRowText(rowText: string, eventStart: Date): Date | nul
     const day = parseInt(mn[1]);
     const month = MONTHS[mn[2].toLowerCase().substring(0, 3)];
     if (month !== undefined && day >= 1 && day <= 31) {
-      return check(new Date(eventStart.getFullYear(), month, day));
+      return check(new Date(Date.UTC(eventStart.getUTCFullYear(), month, day)));
     }
   }
 
@@ -263,7 +263,7 @@ function parseCalendar(html: string, seasonCode: string): FisRace[] {
       : navMonth >= 9
         ? parseInt(seasonCode) - 1
         : parseInt(seasonCode);
-    const date = new Date(year, navMonth - 1, navStart);
+    const date = new Date(Date.UTC(year, navMonth - 1, navStart));
 
     // --- Venue ---
     let venue = "";
