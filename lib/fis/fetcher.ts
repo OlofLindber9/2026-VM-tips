@@ -263,7 +263,8 @@ function parseCalendar(html: string, seasonCode: string): FisRace[] {
       : navMonth >= 9
         ? parseInt(seasonCode) - 1
         : parseInt(seasonCode);
-    const date = new Date(Date.UTC(year, navMonth - 1, navStart));
+    // data-navstart is 1 day before the actual first race day on FIS
+    const date = new Date(Date.UTC(year, navMonth - 1, navStart + 1));
 
     // --- Venue ---
     let venue = "";
