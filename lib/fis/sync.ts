@@ -52,7 +52,7 @@ export async function syncCalendar(): Promise<number> {
 
     let races: FisEventRace[];
     try {
-      races = await fetchEventRaces(eventId, seasonCode, meta.date);
+      races = await fetchEventRaces(eventId, seasonCode);
     } catch {
       races = [];
     }

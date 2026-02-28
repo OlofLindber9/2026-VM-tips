@@ -75,8 +75,7 @@ export async function fetchCalendar(seasonCode: string): Promise<FisRace[]> {
  */
 export async function fetchEventRaces(
   eventId: string,
-  seasonCode: string,
-  eventStartDate?: Date
+  seasonCode: string
 ): Promise<FisEventRace[]> {
   const url =
     `https://www.fis-ski.com/DB/general/event-details.html` +
@@ -89,7 +88,7 @@ export async function fetchEventRaces(
 
   if (!res.ok) return [];
   const html = await res.text();
-  return parseEventRaces(html, eventStartDate);
+  return parseEventRaces(html);
 }
 
 /** Fetch results for a race by its FIS race ID */
@@ -125,7 +124,7 @@ export async function fetchResults(raceId: string): Promise<FisResult[]> {
  *
  * Qualification, relay, and team-sprint rows are excluded.
  */
-function parseEventRaces(html: string, eventStartDate?: Date): FisEventRace[] {
+function parseEventRaces(html: string): FisEventRace[] {
   const $ = cheerio.load(html);
   const races: FisEventRace[] = [];
 
@@ -159,27 +158,26 @@ function parseEventRaces(html: string, eventStartDate?: Date): FisEventRace[] {
     const technique = extractTechnique(rowText, discipline);
     const gender: "M" | "W" = isW ? "W" : "M";
 
-    // Try to extract the individual race date, checking multiple sources in priority order.
+    // Extract the individual race date.
+    // FIS renders dates as <div class="timezone-date" data-date="YYYY-MM-DD" ...>
+    // inside each race row in the static HTML of the event detail page.
     let date: Date | undefined;
-    if (eventStartDate) {
-      // 1. HTML5 <time datetime="YYYY-MM-DD"> — most reliable on modern FIS pages
+    const tzDateEl = $row.find(".timezone-date[data-date]").first();
+    if (tzDateEl.length > 0) {
+      date = parseISODate(tzDateEl.attr("data-date") ?? "") ?? undefined;
+    }
+    // Fallbacks for <time datetime> or row-level data-date (future-proofing)
+    if (!date) {
       const timeEl = $row.find("time[datetime]").first();
       if (timeEl.length > 0) {
         date = parseISODate(timeEl.attr("datetime") ?? "") ?? undefined;
       }
-
-      // 2. data-date / data-racedate attributes on the row element itself
-      if (!date) {
-        date =
-          parseISODate($row.attr("data-date") ?? "") ??
-          parseISODate($row.attr("data-racedate") ?? "") ??
-          undefined;
-      }
-
-      // 3. Text-based patterns (ISO, European, month-name)
-      if (!date) {
-        date = parseRaceDateFromRowText(rowText, eventStartDate) ?? undefined;
-      }
+    }
+    if (!date) {
+      date =
+        parseISODate($row.attr("data-date") ?? "") ??
+        parseISODate($row.attr("data-racedate") ?? "") ??
+        undefined;
     }
 
     races.push({ fisRaceId, discipline, technique, gender, date });
@@ -195,51 +193,6 @@ function parseISODate(s: string): Date | null {
   return new Date(Date.UTC(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])));
 }
 
-/**
- * Try to parse a specific race date from the row text on the event detail page.
- * Tries three formats in order:
- *   1. ISO date in text:      "2026-03-01"
- *   2. European date in text: "01.03.2026"
- *   3. Month-name in text:    "01 Mar", "28 February", "1 MARCH"
- * Returns null if nothing recognisable is found or the date is not within
- * 10 days of eventStart (sanity check against false positives).
- */
-function parseRaceDateFromRowText(rowText: string, eventStart: Date): Date | null {
-  function check(candidate: Date): Date | null {
-    const diff = (candidate.getTime() - eventStart.getTime()) / 86400000;
-    if (diff >= -1 && diff <= 10) return candidate;
-    // Retry with next year for Dec→Jan crossover events
-    const next = new Date(Date.UTC(candidate.getUTCFullYear() + 1, candidate.getUTCMonth(), candidate.getUTCDate()));
-    const diffNext = (next.getTime() - eventStart.getTime()) / 86400000;
-    return diffNext >= -1 && diffNext <= 10 ? next : null;
-  }
-
-  // 1. ISO: 2026-03-01
-  const iso = parseISODate(rowText);
-  if (iso) return check(iso);
-
-  // 2. European: 01.03.2026 or 01/03/2026
-  const eu = rowText.match(/\b(0[1-9]|[12]\d|3[01])[./](0[1-9]|1[0-2])[./](20\d\d)\b/);
-  if (eu) return check(new Date(Date.UTC(parseInt(eu[3]), parseInt(eu[2]) - 1, parseInt(eu[1]))));
-
-  // 3. Month-name: "01 Mar", "28 Feb", "1 March"
-  const MONTHS: Record<string, number> = {
-    jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-    jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
-  };
-  const mn = rowText.match(
-    /\b(\d{1,2})\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\b/i
-  );
-  if (mn) {
-    const day = parseInt(mn[1]);
-    const month = MONTHS[mn[2].toLowerCase().substring(0, 3)];
-    if (month !== undefined && day >= 1 && day <= 31) {
-      return check(new Date(Date.UTC(eventStart.getUTCFullYear(), month, day)));
-    }
-  }
-
-  return null;
-}
 
 function parseCalendar(html: string, seasonCode: string): FisRace[] {
   const $ = cheerio.load(html);
@@ -263,8 +216,7 @@ function parseCalendar(html: string, seasonCode: string): FisRace[] {
       : navMonth >= 9
         ? parseInt(seasonCode) - 1
         : parseInt(seasonCode);
-    // data-navstart is 1 day before the actual first race day on FIS
-    const date = new Date(Date.UTC(year, navMonth - 1, navStart + 1));
+    const date = new Date(Date.UTC(year, navMonth - 1, navStart));
 
     // --- Venue ---
     let venue = "";
