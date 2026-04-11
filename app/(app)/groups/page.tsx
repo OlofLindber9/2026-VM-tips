@@ -1,11 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
 export default async function GroupsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const userId = user!.id;
+  const session = await auth();
+  const userId = session!.user.id;
 
   const memberships = await prisma.groupMembership.findMany({
     where: { userId },

@@ -1,14 +1,12 @@
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { format, genderLabel, genderColor } from "@/lib/utils";
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const userId = user!.id;
-  const displayName =
-    (user!.user_metadata?.username as string) || user!.email?.split("@")[0] || "Player";
+  const session = await auth();
+  const userId = session!.user.id;
+  const displayName = session!.user?.name || session!.user?.email?.split("@")[0] || "Player";
 
   // Upcoming races
   const upcomingRaces = await prisma.race.findMany({
@@ -38,7 +36,6 @@ export default async function DashboardPage() {
   });
 
   return (
-    
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-white">
@@ -48,16 +45,16 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Upcoming races  */}
+        {/* Upcoming events */}
         <div className="glass-card col-span-full lg:col-span-2">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="font-bold text-white">Upcoming races</h2>
+            <h2 className="font-bold text-white">Upcoming events</h2>
             <Link href="/races" className="text-sm text-app-ice hover:text-white transition-colors">
               View all →
             </Link>
           </div>
           {upcomingRaces.length === 0 ? (
-            <p className="text-white/40 text-sm">No upcoming races — check back soon.</p>
+            <p className="text-white/40 text-sm">No upcoming events — check back soon.</p>
           ) : (
             <div className="space-y-3">
               {upcomingRaces.map((race) => (

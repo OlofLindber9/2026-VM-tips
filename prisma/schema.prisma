@@ -7,11 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Mirrors Supabase auth.users — created on first sign-in via a trigger or API route
-model Profile {
-  id          String @id // Supabase user ID
+model User {
+  id          String   @id @default(cuid())
   displayName String
-  email       String
+  email       String   @unique
+  password    String   // bcrypt hash
+  createdAt   DateTime @default(now())
 }
 
 model Race {
@@ -20,7 +21,7 @@ model Race {
   venue       String
   country     String
   date        DateTime
-  discipline  String   // e.g. "Group Stage", "Quarter-Final", "Semi-Final", "Final"
+  discipline  String
   gender      String   // "M" or "W"
   status      String   @default("upcoming") // "upcoming" | "completed"
   results     Result[]
@@ -52,7 +53,7 @@ model Group {
   id          String            @id @default(cuid())
   name        String
   inviteCode  String            @unique @default(cuid())
-  createdBy   String            // Supabase user ID
+  createdBy   String            // User.id
   createdAt   DateTime          @default(now())
   members     GroupMembership[]
   predictions Prediction[]
@@ -60,7 +61,7 @@ model Group {
 
 model GroupMembership {
   id       String   @id @default(cuid())
-  userId   String   // Supabase user ID
+  userId   String   // User.id
   groupId  String
   joinedAt DateTime @default(now())
   group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
@@ -73,12 +74,12 @@ model GroupMembership {
 //          +1 pt if predicted 3rd appears anywhere in actual top 3
 model Prediction {
   id        String   @id @default(cuid())
-  userId    String   // Supabase user ID
+  userId    String   // User.id
   raceId    String
   groupId   String
   first     String   // athlete/team ID
-  second    String   // athlete/team ID
-  third     String   // athlete/team ID
+  second    String
+  third     String
   score     Int?     // null until race is completed and scored
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

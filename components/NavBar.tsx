@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { useState } from "react";
 
 interface NavBarProps {
@@ -11,15 +11,7 @@ interface NavBarProps {
 
 export default function NavBar({ user }: NavBarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const supabase = createClient();
   const [menuOpen, setMenuOpen] = useState(false);
-
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
 
   const links = [
     { href: "/dashboard", label: "Dashboard", icon: "🏠" },
@@ -104,18 +96,8 @@ export default function NavBar({ user }: NavBarProps) {
             <span className="text-white/55 text-sm">{user.displayName}</span>
           </div>
 
-          <a
-            href="mailto:ololin0725@gmail.com?subject=VM%20Predictor%20Feedback"
-            className="hidden sm:inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-app-accent transition-colors font-medium border border-white/15 px-3 py-1 rounded-lg hover:border-app-accent/50"
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            Feedback
-          </a>
-
           <button
-            onClick={handleLogout}
+            onClick={() => signOut({ callbackUrl: "/login" })}
             className="text-xs text-white/40 hover:text-white/75 transition-colors font-medium border border-white/15 px-3 py-1 rounded-lg hover:border-white/30"
           >
             Log out
@@ -169,20 +151,12 @@ export default function NavBar({ user }: NavBarProps) {
           })}
           <div className="pt-2 border-t border-white/10 flex items-center justify-between px-3">
             <span className="text-white/35 text-xs">{user.displayName}</span>
-            <div className="flex items-center gap-3">
-              <a
-                href="mailto:ololin0725@gmail.com?subject=VM%20Predictor%20Feedback"
-                className="text-xs text-white/35 hover:text-app-accent transition-colors"
-              >
-                Feedback
-              </a>
-              <button
-                onClick={handleLogout}
-                className="text-xs text-white/35 hover:text-white transition-colors"
-              >
-                Log out
-              </button>
-            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="text-xs text-white/35 hover:text-white transition-colors"
+            >
+              Log out
+            </button>
           </div>
         </div>
       )}

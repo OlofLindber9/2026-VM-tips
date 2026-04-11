@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { format, disciplineColor, genderLabel, genderColor } from "@/lib/utils";
@@ -8,9 +8,8 @@ import ResultsPodium from "@/components/ResultsPodium";
 
 export default async function RacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const userId = user!.id;
+  const session = await auth();
+  const userId = session!.user.id;
 
   const race = await prisma.race.findUnique({
     where: { id },
@@ -34,8 +33,7 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
     include: { race: { select: { name: true } } },
   });
 
-  // Athlete pool: use race results if completed (sorted by rank),
-  // otherwise use all athletes from the DB for this gender.
+  // Athlete pool: use race results if completed, otherwise all athletes for this gender
   let athletePool: { id: string; name: string; nationCode: string }[] = [];
 
   if (race.results.length > 0) {
@@ -45,11 +43,10 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
       nationCode: r.athlete.nationCode,
     }));
   } else {
-    const athletes = await prisma.athlete.findMany({
+    athletePool = await prisma.athlete.findMany({
       where: { gender: race.gender },
       orderBy: { name: "asc" },
     });
-    athletePool = athletes;
   }
 
   const podium =

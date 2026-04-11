@@ -1,25 +1,21 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { randomBytes } from "crypto";
 
 function generateInviteCode(): string {
-  return randomBytes(4).toString("hex").toUpperCase(); // 8 hex chars
+  return randomBytes(4).toString("hex").toUpperCase();
 }
 
-// GET /api/groups — list groups the current user belongs to
 export async function GET() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const memberships = await prisma.groupMembership.findMany({
-    where: { userId: user.id },
+    where: { userId: session.user.id },
     include: {
       group: {
-        include: {
-          _count: { select: { members: true } },
-        },
+        include: { _count: { select: { members: true } } },
       },
     },
     orderBy: { joinedAt: "desc" },
@@ -28,11 +24,9 @@ export async function GET() {
   return NextResponse.json(memberships.map((m) => m.group));
 }
 
-// POST /api/groups — create a new group
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
   const name = (body.name as string)?.trim();
@@ -40,15 +34,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Group name must be at least 2 characters" }, { status: 400 });
   }
 
-  const inviteCode = generateInviteCode();
-
   const group = await prisma.group.create({
     data: {
       name,
-      inviteCode,
-      createdBy: user.id,
+      inviteCode: generateInviteCode(),
+      createdBy: session.user.id,
       members: {
-        create: { userId: user.id },
+        create: { userId: session.user.id },
       },
     },
   });

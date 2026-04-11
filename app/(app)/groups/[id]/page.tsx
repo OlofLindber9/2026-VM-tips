@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -6,24 +6,19 @@ import { format } from "@/lib/utils";
 
 export default async function GroupPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const userId = user!.id;
+  const session = await auth();
+  const userId = session!.user.id;
 
   const group = await prisma.group.findUnique({
     where: { id },
-    include: {
-      members: true,
-    },
+    include: { members: true },
   });
 
   if (!group) notFound();
 
-  // Verify membership
   const isMember = group.members.some((m) => m.userId === userId);
   if (!isMember) notFound();
 
-  // All predictions for this group, with scores
   const predictions = await prisma.prediction.findMany({
     where: { groupId: id },
     include: {
@@ -32,7 +27,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     orderBy: { createdAt: "desc" },
   });
 
-  // Compute leaderboard: sum of scores per user
+  // Leaderboard: sum scores per user
   const scoresByUser: Record<string, number> = {};
   const predictionsByUser: Record<
     string,
@@ -51,15 +46,15 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     });
   }
 
-  // Get display names from profiles table
+  // Get display names from User table
   const userIds = group.members.map((m) => m.userId);
-  const profiles = await prisma.profile.findMany({
+  const users = await prisma.user.findMany({
     where: { id: { in: userIds } },
   });
-  const profileMap = Object.fromEntries(profiles.map((p) => [p.id, p.displayName]));
+  const userMap = Object.fromEntries(users.map((u) => [u.id, u.displayName]));
 
   function displayName(uid: string): string {
-    return profileMap[uid] || "Member " + uid.slice(0, 6);
+    return userMap[uid] || "Member " + uid.slice(0, 6);
   }
 
   const leaderboard = group.members
@@ -72,7 +67,6 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     }))
     .sort((a, b) => b.totalScore - a.totalScore);
 
-  // Upcoming races (so members can make predictions)
   const upcomingRaces = await prisma.race.findMany({
     where: { status: "upcoming", date: { gte: new Date() } },
     orderBy: { date: "asc" },
@@ -85,7 +79,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
       <div className="glass-card">
         <div className="flex justify-between items-start">
           <div>
-            <Link href="/groups" className="text-ski-ice text-sm hover:text-white transition-colors">← My groups</Link>
+            <Link href="/groups" className="text-app-ice text-sm hover:text-white transition-colors">← My groups</Link>
             <h1 className="text-2xl font-bold text-white mt-1">{group.name}</h1>
             <p className="text-white/50 text-sm mt-1">
               {group.members.length} member{group.members.length !== 1 ? "s" : ""}
@@ -93,7 +87,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
           </div>
           <div className="text-right">
             <p className="text-xs text-white/40 mb-1">Invite code</p>
-            <span className="font-mono font-bold text-ski-ice px-3 py-1.5 rounded-lg text-sm tracking-widest"
+            <span className="font-mono font-bold text-app-ice px-3 py-1.5 rounded-lg text-sm tracking-widest"
               style={{ background: "rgba(255,255,255,0.1)" }}>
               {group.inviteCode}
             </span>
@@ -139,14 +133,14 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
                     <span className="font-semibold text-sm text-white">
                       {entry.displayName}
                       {isCurrentUser && (
-                        <span className="ml-2 text-xs text-ski-ice">(you)</span>
+                        <span className="ml-2 text-xs text-app-ice">(you)</span>
                       )}
                     </span>
                     <div className="text-xs text-white/40 mt-0.5">
-                      {entry.scoredCount} race{entry.scoredCount !== 1 ? "s" : ""} scored
+                      {entry.scoredCount} event{entry.scoredCount !== 1 ? "s" : ""} scored
                     </div>
                   </div>
-                  <span className="font-bold text-ski-accent text-lg">
+                  <span className="font-bold text-app-accent text-lg">
                     {entry.totalScore} <span className="text-xs font-normal text-white/40">pts</span>
                   </span>
                 </div>
@@ -156,10 +150,10 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
         )}
       </div>
 
-      {/* Upcoming races to predict */}
+      {/* Upcoming events to predict */}
       {upcomingRaces.length > 0 && (
         <div className="glass-card">
-          <h2 className="font-bold text-white mb-4">Predict upcoming races</h2>
+          <h2 className="font-bold text-white mb-4">Predict upcoming events</h2>
           <div className="space-y-2">
             {upcomingRaces.map((race) => {
               const myPrediction = predictionsByUser[userId]?.find(

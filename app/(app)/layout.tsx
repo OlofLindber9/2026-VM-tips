@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import NavBar from "@/components/NavBar";
 
@@ -7,15 +7,10 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth();
+  if (!session) redirect("/login");
 
-  if (!user) redirect("/login");
-
-  const displayName =
-    (user.user_metadata?.username as string) || user.email?.split("@")[0] || "Player";
+  const displayName = session.user?.name || session.user?.email?.split("@")[0] || "Player";
 
   return (
     <div
@@ -34,7 +29,7 @@ export default async function AppLayout({
         }}
       />
 
-      <NavBar user={{ email: user.email!, displayName }} />
+      <NavBar user={{ email: session.user?.email!, displayName }} />
 
       <main className="relative z-10 flex-1 max-w-5xl mx-auto w-full px-4 py-8">
         {children}
