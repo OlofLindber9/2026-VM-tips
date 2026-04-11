@@ -21,23 +21,23 @@ export default async function GroupsPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-white">My Groups</h1>
+        <h1 className="text-2xl font-bold text-white">Mina grupper</h1>
         <div className="flex gap-3">
-          <Link href="/groups/join" className="btn-secondary text-sm">Join group</Link>
-          <Link href="/groups/create" className="btn-primary text-sm">Create group</Link>
+          <Link href="/groups/join" className="btn-secondary text-sm">Gå med</Link>
+          <Link href="/groups/create" className="btn-primary text-sm">Skapa grupp</Link>
         </div>
       </div>
 
       {memberships.length === 0 ? (
         <div className="glass-card text-center py-12">
           <div className="text-4xl mb-3">👥</div>
-          <p className="text-white/70 mb-2 font-medium">No groups yet</p>
+          <p className="text-white/70 mb-2 font-medium">Inga grupper ännu</p>
           <p className="text-white/40 text-sm mb-6">
-            Create a group and invite your friends, or join one with an invite code.
+            Skapa en grupp och bjud in dina vänner, eller gå med med en inbjudningskod.
           </p>
           <div className="flex gap-3 justify-center">
-            <Link href="/groups/create" className="btn-primary">Create group</Link>
-            <Link href="/groups/join" className="btn-secondary">Join group</Link>
+            <Link href="/groups/create" className="btn-primary">Skapa grupp</Link>
+            <Link href="/groups/join" className="btn-secondary">Gå med</Link>
           </div>
         </div>
       ) : (
@@ -52,16 +52,14 @@ export default async function GroupsPage() {
               >
                 <div className="flex justify-between items-start mb-2">
                   <h2 className="font-bold text-white text-lg">{m.group.name}</h2>
-                  {isOwner && (
-                    <span className="badge badge-blue">Owner</span>
-                  )}
+                  {isOwner && <span className="badge badge-blue">Ägare</span>}
                 </div>
                 <p className="text-white/50 text-sm">
-                  {m.group._count.members} member{m.group._count.members !== 1 ? "s" : ""} ·{" "}
-                  {m.group._count.predictions} prediction{m.group._count.predictions !== 1 ? "s" : ""}
+                  {m.group._count.members} {m.group._count.members !== 1 ? "deltagare" : "deltagare"} ·{" "}
+                  {m.group._count.predictions} {m.group._count.predictions !== 1 ? "tips" : "tips"}
                 </p>
                 <p className="text-xs text-white/40 mt-2">
-                  Invite code: <span className="font-mono font-bold text-white/70">{m.group.inviteCode}</span>
+                  Inbjudningskod: <span className="font-mono font-bold text-white/70">{m.group.inviteCode}</span>
                 </p>
               </Link>
             );

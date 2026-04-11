@@ -21,21 +21,19 @@ export default async function RacesPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
-        <h1 className="text-2xl font-bold text-white">World Cup 2026</h1>
-      </div>
+      <h1 className="text-2xl font-bold text-white">VM 2026 — Matcher</h1>
 
       {races.length === 0 && (
         <div className="glass-card text-center py-12">
           <div className="text-4xl mb-3">📅</div>
-          <p className="text-white/50 mb-4">No events yet.</p>
-          <p className="text-sm text-white/40">Events will appear here once they are added.</p>
+          <p className="text-white/50 mb-2">Inga matcher tillagda ännu.</p>
+          <p className="text-sm text-white/40">Matcher visas här när de läggs till.</p>
         </div>
       )}
 
       {upcoming.length > 0 && (
         <section>
-          <h2 className="font-bold text-lg text-white/70 mb-3">Upcoming</h2>
+          <h2 className="font-bold text-lg text-white/70 mb-3">Kommande</h2>
           <div className="grid gap-3">
             {upcoming.map((race) => (
               <RaceCard key={race.id} race={race} />
@@ -46,7 +44,7 @@ export default async function RacesPage() {
 
       {past.length > 0 && (
         <section>
-          <h2 className="font-bold text-lg text-white/70 mb-3">Past</h2>
+          <h2 className="font-bold text-lg text-white/70 mb-3">Avslutade</h2>
           <div className="grid gap-3">
             {past.map((race) => (
               <RaceCard key={race.id} race={race} />
@@ -87,7 +85,7 @@ function RaceCard({
         <div className="flex items-center gap-1.5 mb-1">
           <span className={`badge ${disciplineColor(race.discipline)}`}>{race.discipline}</span>
           <span className={`badge ${genderColor(race.gender)}`}>{genderLabel(race.gender)}</span>
-          {isCompleted && <span className="badge badge-green">Done</span>}
+          {isCompleted && <span className="badge badge-green">Avslutad</span>}
         </div>
         <div className="font-semibold text-white truncate">{race.name}</div>
         <div className="text-sm text-white/40 mt-0.5 truncate">
@@ -100,7 +98,7 @@ function RaceCard({
         )}
       </div>
       <div className="text-right text-xs text-white/40 shrink-0">
-        <div>{race._count.predictions} predictions</div>
+        <div>{race._count.predictions} tips</div>
       </div>
     </Link>
   );

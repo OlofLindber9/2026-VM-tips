@@ -9,15 +9,15 @@ export async function POST(request: Request) {
   const displayName = (body.displayName as string)?.trim();
 
   if (!email || !password || !displayName) {
-    return NextResponse.json({ error: "All fields are required" }, { status: 400 });
+    return NextResponse.json({ error: "Alla fält är obligatoriska" }, { status: 400 });
   }
   if (password.length < 6) {
-    return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+    return NextResponse.json({ error: "Lösenordet måste vara minst 6 tecken" }, { status: 400 });
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    return NextResponse.json({ error: "Email already in use" }, { status: 409 });
+    return NextResponse.json({ error: "E-postadressen används redan" }, { status: 409 });
   }
 
   const hashed = await bcrypt.hash(password, 10);

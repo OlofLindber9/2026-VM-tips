@@ -13,7 +13,7 @@ export default function CreateGroupPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (name.trim().length < 2) {
-      setError("Group name must be at least 2 characters.");
+      setError("Gruppnamnet måste vara minst 2 tecken.");
       return;
     }
     setLoading(true);
@@ -28,7 +28,7 @@ export default function CreateGroupPage() {
     const data = await res.json();
     setLoading(false);
     if (!res.ok) {
-      setError(data.error || "Failed to create group");
+      setError(data.error || "Kunde inte skapa gruppen");
     } else {
       router.push(`/groups/${data.id}`);
     }
@@ -37,17 +37,17 @@ export default function CreateGroupPage() {
   return (
     <div className="max-w-md mx-auto">
       <div className="mb-6">
-        <Link href="/groups" className="text-ski-ice text-sm hover:text-white transition-colors">← Back to groups</Link>
-        <h1 className="text-2xl font-bold text-white mt-2">Create a group</h1>
+        <Link href="/groups" className="text-app-ice text-sm hover:text-white transition-colors">← Tillbaka till grupper</Link>
+        <h1 className="text-2xl font-bold text-white mt-2">Skapa en grupp</h1>
         <p className="text-white/50 text-sm mt-1">
-          Once created, you will get an invite code to share with friends.
+          När gruppen är skapad får du en inbjudningskod att dela med vänner.
         </p>
       </div>
 
       <div className="glass-card">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-1.5">Group name</label>
+            <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-1.5">Gruppnamn</label>
             <input
               type="text"
               required
@@ -55,7 +55,7 @@ export default function CreateGroupPage() {
               onChange={(e) => setName(e.target.value)}
               maxLength={50}
               className="input-dark"
-              placeholder="e.g. Office Ski Gang"
+              placeholder="t.ex. Jobbets VM-tips"
             />
           </div>
 
@@ -64,7 +64,7 @@ export default function CreateGroupPage() {
           )}
 
           <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? "Creating…" : "Create group"}
+            {loading ? "Skapar…" : "Skapa grupp"}
           </button>
         </form>
       </div>

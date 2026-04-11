@@ -4,22 +4,21 @@
 
 @layer base {
   :root {
-    --app-blue: #1a3a5c;
-    --app-light: #2d6a9f;
-    --app-snow: #f0f4f8;
-    --app-accent: #e8a020;
-    --app-midnight: #050e1a;
-    --app-deep: #0d1f35;
-    --app-ice: #a8d4f0;
+    --app-midnight: #040d08;
+    --app-deep:     #091a10;
+    --app-green:    #0f2d1a;
+    --app-light:    #1a4a28;
+    --app-pitch:    #2d6a4f;
+    --app-accent:   #e8a020;
+    --app-gold:     #f5c842;
+    --app-ice:      #b8f0c8;
   }
 
   body {
-    @apply bg-app-snow text-gray-900;
+    @apply bg-app-deep text-gray-900;
   }
 
-  /* Display headings use Barlow Condensed */
-  h1,
-  h2 {
+  h1, h2 {
     font-family: var(--font-barlow), "Barlow Condensed", "Impact", sans-serif;
     letter-spacing: -0.01em;
   }
@@ -28,16 +27,16 @@
 /* ─── Buttons ───────────────────────────────────────────────────── */
 @layer components {
   .btn-primary {
-    @apply bg-app-blue text-white font-bold px-6 py-2.5 rounded-xl
-           hover:bg-app-light transition-all duration-200
+    @apply bg-app-light text-white font-bold px-6 py-2.5 rounded-xl
+           hover:bg-app-pitch transition-all duration-200
            disabled:opacity-50 disabled:cursor-not-allowed
-           shadow-md hover:shadow-lg hover:shadow-blue-900/25
+           shadow-md hover:shadow-lg hover:shadow-green-900/30
            transform hover:-translate-y-0.5 active:translate-y-0;
   }
 
   .btn-secondary {
-    @apply bg-white text-app-blue font-bold px-6 py-2.5 rounded-xl
-           border border-app-blue/25 hover:bg-sky-50
+    @apply bg-white text-app-light font-bold px-6 py-2.5 rounded-xl
+           border border-app-light/25 hover:bg-green-50
            transition-all duration-200 shadow-sm hover:shadow-md;
   }
 
@@ -54,13 +53,12 @@
   }
 
   .card-hover {
-    @apply card hover:shadow-lg hover:border-sky-200 hover:-translate-y-0.5;
+    @apply card hover:shadow-lg hover:border-green-200 hover:-translate-y-0.5;
   }
 
-  /* Glassmorphism card — used over dark/image backgrounds */
   .glass-card {
-    @apply rounded-2xl p-5 border border-white/20 shadow-2xl;
-    background: rgba(255, 255, 255, 0.08);
+    @apply rounded-2xl p-5 border border-white/15 shadow-2xl;
+    background: rgba(255, 255, 255, 0.06);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
   }
@@ -93,17 +91,20 @@
   .badge-teal {
     @apply badge bg-teal-400/20 text-teal-200 border border-teal-400/40;
   }
+  .badge-gold {
+    @apply badge bg-amber-400/20 text-amber-300 border border-amber-400/40;
+  }
 
   /* ─── Text effects ────────────────────────────────────────────── */
   .gradient-text {
-    background: linear-gradient(135deg, #2d6a9f 0%, #e8a020 100%);
+    background: linear-gradient(135deg, #2d6a4f 0%, #e8a020 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .gradient-text-light {
-    background: linear-gradient(135deg, #a8d4f0 0%, #f5c842 100%);
+    background: linear-gradient(135deg, #b8f0c8 0%, #f5c842 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -112,7 +113,7 @@
   /* ─── Inputs ──────────────────────────────────────────────────── */
   .input-field {
     @apply w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm
-           focus:outline-none focus:ring-2 focus:ring-app-light/50 focus:border-app-light
+           focus:outline-none focus:ring-2 focus:ring-app-pitch/50 focus:border-app-pitch
            bg-white transition-all duration-150 placeholder:text-gray-400;
   }
 
@@ -120,7 +121,7 @@
     @apply w-full rounded-xl px-4 py-2.5 text-sm text-white
            focus:outline-none focus:ring-2 focus:ring-app-accent/60
            transition-all duration-150 placeholder:text-white/40;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.07);
     border: 1px solid rgba(255, 255, 255, 0.15);
   }
 
@@ -129,7 +130,7 @@
            focus:outline-none focus:ring-2 focus:ring-app-accent/60
            transition-all duration-150
            disabled:opacity-50 disabled:cursor-not-allowed;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.07);
     border: 1px solid rgba(255, 255, 255, 0.15);
     color-scheme: dark;
   }
@@ -146,9 +147,9 @@
   }
 }
 
-/* ─── Dark-background page wrapper ───────────────────────────────── */
+/* ─── Dark page wrapper ───────────────────────────────────────────── */
 .page-dark {
-  background: linear-gradient(160deg, #050e1a 0%, #0d1f35 45%, #1a3a5c 100%);
+  background: linear-gradient(160deg, #040d08 0%, #091a10 45%, #0f2d1a 100%);
   min-height: 100vh;
   position: relative;
   overflow: hidden;

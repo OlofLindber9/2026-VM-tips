@@ -10,21 +10,36 @@ export default async function AppLayout({
   const session = await auth();
   if (!session) redirect("/login");
 
-  const displayName = session.user?.name || session.user?.email?.split("@")[0] || "Player";
+  const displayName = session.user?.name || session.user?.email?.split("@")[0] || "Spelare";
 
   return (
     <div
       className="min-h-screen flex flex-col overflow-x-hidden"
       style={{
-        background: "linear-gradient(160deg, #050e1a 0%, #0d1f35 45%, #1a3a5c 100%)",
+        background: "linear-gradient(160deg, #040d08 0%, #091a10 45%, #0f2d1a 100%)",
       }}
     >
+      {/* Subtle horizontal pitch lines */}
+      <div
+        className="fixed inset-0 pointer-events-none opacity-[0.03]"
+        style={{
+          backgroundImage: `repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 80px,
+            rgba(255,255,255,0.5) 80px,
+            rgba(255,255,255,0.5) 81px
+          )`,
+          zIndex: 0,
+        }}
+      />
+
       {/* Dark gradient overlay */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
           background:
-            "linear-gradient(to bottom, rgba(5,14,26,0.55) 0%, rgba(5,14,26,0.2) 45%, rgba(5,14,26,0.75) 100%)",
+            "linear-gradient(to bottom, rgba(4,13,8,0.45) 0%, rgba(4,13,8,0.1) 45%, rgba(4,13,8,0.65) 100%)",
           zIndex: 0,
         }}
       />

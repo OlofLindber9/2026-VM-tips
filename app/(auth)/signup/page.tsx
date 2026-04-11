@@ -27,12 +27,11 @@ export default function SignupPage() {
     const data = await res.json();
 
     if (!res.ok) {
-      setError(data.error || "Something went wrong");
+      setError(data.error || "Något gick fel");
       setLoading(false);
       return;
     }
 
-    // Auto sign-in after account creation
     const result = await signIn("credentials", {
       email,
       password,
@@ -40,7 +39,7 @@ export default function SignupPage() {
     });
 
     if (result?.error) {
-      setError("Account created but login failed — please log in manually");
+      setError("Kontot skapades men inloggningen misslyckades — försök logga in manuellt");
       setLoading(false);
     } else {
       router.push("/dashboard");
@@ -50,7 +49,6 @@ export default function SignupPage() {
 
   return (
     <div className="page-dark">
-      {/* Gold top accent */}
       <div
         className="absolute top-0 left-0 right-0 h-[2px]"
         style={{
@@ -63,25 +61,25 @@ export default function SignupPage() {
           href="/"
           className="absolute top-5 left-5 text-white/40 hover:text-white/70 text-sm font-medium transition-colors"
         >
-          ← Home
+          ← Hem
         </Link>
 
         <div className="glass-card w-full max-w-sm animate-scale-in">
           <div className="text-center mb-6">
-            <div className="text-5xl mb-3">🏆</div>
+            <div className="text-5xl mb-3">⚽</div>
             <h1
               className="text-white text-3xl font-black uppercase"
               style={{ fontFamily: "var(--font-barlow), 'Barlow Condensed', sans-serif" }}
             >
-              Join the game
+              Skapa konto
             </h1>
-            <p className="text-white/45 text-sm mt-1">Create your free account</p>
+            <p className="text-white/45 text-sm mt-1">Gratis att gå med</p>
           </div>
 
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
               <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-1.5">
-                Display name
+                Visningsnamn
               </label>
               <input
                 type="text"
@@ -89,12 +87,12 @@ export default function SignupPage() {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 className="input-dark"
-                placeholder="YourName42"
+                placeholder="DittNamn42"
               />
             </div>
             <div>
               <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-1.5">
-                Email
+                E-post
               </label>
               <input
                 type="email"
@@ -102,12 +100,12 @@ export default function SignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="input-dark"
-                placeholder="you@example.com"
+                placeholder="du@exempel.se"
               />
             </div>
             <div>
               <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-1.5">
-                Password
+                Lösenord
               </label>
               <input
                 type="password"
@@ -116,7 +114,7 @@ export default function SignupPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="input-dark"
-                placeholder="At least 6 characters"
+                placeholder="Minst 6 tecken"
               />
             </div>
 
@@ -138,14 +136,14 @@ export default function SignupPage() {
                 letterSpacing: "0.05em",
               }}
             >
-              {loading ? "Creating account…" : "CREATE ACCOUNT"}
+              {loading ? "Skapar konto…" : "SKAPA KONTO"}
             </button>
           </form>
 
           <p className="text-center text-white/35 text-sm mt-5">
-            Already have an account?{" "}
+            Redan ett konto?{" "}
             <Link href="/login" className="text-app-accent hover:text-app-gold font-semibold transition-colors">
-              Log in
+              Logga in
             </Link>
           </p>
         </div>

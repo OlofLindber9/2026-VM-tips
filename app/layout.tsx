@@ -12,8 +12,8 @@ const barlowCondensed = Barlow_Condensed({
 });
 
 export const metadata: Metadata = {
-  title: "VM Predictor 2026",
-  description: "Compete with friends by predicting World Cup 2026 results",
+  title: "2026 VM-tips",
+  description: "Tippa VM 2026 med dina vänner",
 };
 
 export default function RootLayout({
@@ -22,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="sv">
       <body className={`${inter.variable} ${barlowCondensed.variable} ${inter.className}`}>
         <SessionProvider>{children}</SessionProvider>
       </body>

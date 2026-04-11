@@ -6,16 +6,14 @@ import { format, genderLabel, genderColor } from "@/lib/utils";
 export default async function DashboardPage() {
   const session = await auth();
   const userId = session!.user.id;
-  const displayName = session!.user?.name || session!.user?.email?.split("@")[0] || "Player";
+  const displayName = session!.user?.name || session!.user?.email?.split("@")[0] || "Spelare";
 
-  // Upcoming races
   const upcomingRaces = await prisma.race.findMany({
     where: { status: "upcoming", date: { gte: new Date() } },
     orderBy: { date: "asc" },
     take: 3,
   });
 
-  // User's groups
   const memberships = await prisma.groupMembership.findMany({
     where: { userId },
     include: {
@@ -27,7 +25,6 @@ export default async function DashboardPage() {
     orderBy: { joinedAt: "desc" },
   });
 
-  // Recent scored predictions
   const recentPredictions = await prisma.prediction.findMany({
     where: { userId, score: { not: null } },
     include: { race: true },
@@ -39,22 +36,22 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-white">
-          Welcome back, {displayName}!
+          Välkommen, {displayName}!
         </h1>
-        <p className="text-white/50 mt-1">Here is your overview.</p>
+        <p className="text-white/50 mt-1">Här är din översikt.</p>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Upcoming events */}
+        {/* Kommande matcher */}
         <div className="glass-card col-span-full lg:col-span-2">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="font-bold text-white">Upcoming events</h2>
+            <h2 className="font-bold text-white">Kommande matcher</h2>
             <Link href="/races" className="text-sm text-app-ice hover:text-white transition-colors">
-              View all →
+              Visa alla →
             </Link>
           </div>
           {upcomingRaces.length === 0 ? (
-            <p className="text-white/40 text-sm">No upcoming events — check back soon.</p>
+            <p className="text-white/40 text-sm">Inga kommande matcher — kom tillbaka snart.</p>
           ) : (
             <div className="space-y-3">
               {upcomingRaces.map((race) => (
@@ -78,19 +75,19 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* My groups */}
+        {/* Mina grupper */}
         <div className="glass-card">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="font-bold text-white">My groups</h2>
+            <h2 className="font-bold text-white">Mina grupper</h2>
             <Link href="/groups" className="text-sm text-app-ice hover:text-white transition-colors">
-              View all →
+              Visa alla →
             </Link>
           </div>
           {memberships.length === 0 ? (
             <div className="text-center py-4">
-              <p className="text-white/40 text-sm mb-3">No groups yet.</p>
+              <p className="text-white/40 text-sm mb-3">Inga grupper ännu.</p>
               <Link href="/groups/create" className="btn-primary text-sm">
-                Create one
+                Skapa en
               </Link>
             </div>
           ) : (
@@ -103,7 +100,7 @@ export default async function DashboardPage() {
                 >
                   <span className="font-medium text-sm text-white/90">{m.group.name}</span>
                   <span className="text-xs text-white/40">
-                    {m.group._count.members} member{m.group._count.members !== 1 ? "s" : ""}
+                    {m.group._count.members} {m.group._count.members !== 1 ? "deltagare" : "deltagare"}
                   </span>
                 </Link>
               ))}
@@ -112,10 +109,10 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Recent scores */}
+      {/* Senaste poäng */}
       {recentPredictions.length > 0 && (
         <div className="glass-card">
-          <h2 className="font-bold text-white mb-4">Recent scores</h2>
+          <h2 className="font-bold text-white mb-4">Senaste poäng</h2>
           <div className="space-y-2">
             {recentPredictions.map((p) => (
               <div key={p.id} className="flex items-center justify-between text-sm">

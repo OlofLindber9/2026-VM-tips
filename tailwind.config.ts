@@ -11,15 +11,15 @@ const config: Config = {
     extend: {
       colors: {
         app: {
-          blue: "#1a3a5c",
-          light: "#2d6a9f",
-          snow: "#f0f4f8",
-          accent: "#e8a020",
-          midnight: "#050e1a",
-          deep: "#0d1f35",
-          ice: "#a8d4f0",
-          frost: "#d4ebf7",
-          gold: "#f5c842",
+          midnight: "#040d08",
+          deep:     "#091a10",
+          green:    "#0f2d1a",
+          light:    "#1a4a28",
+          pitch:    "#2d6a4f",
+          accent:   "#e8a020",
+          gold:     "#f5c842",
+          ice:      "#b8f0c8",
+          frost:    "#d4f7e2",
         },
       },
       fontFamily: {
@@ -56,25 +56,25 @@ const config: Config = {
         },
       },
       animation: {
-        "fade-in": "fadeIn 0.7s ease-out forwards",
-        "slide-up": "slideUp 0.6s ease-out forwards",
+        "fade-in":    "fadeIn 0.7s ease-out forwards",
+        "slide-up":   "slideUp 0.6s ease-out forwards",
         "slide-up-1": "slideUp 0.6s ease-out 0.1s forwards",
         "slide-up-2": "slideUp 0.6s ease-out 0.2s forwards",
         "slide-up-3": "slideUp 0.6s ease-out 0.3s forwards",
         "slide-up-4": "slideUp 0.6s ease-out 0.4s forwards",
         "slide-down": "slideDown 0.5s ease-out forwards",
-        shimmer: "shimmer 2.5s linear infinite",
+        shimmer:      "shimmer 2.5s linear infinite",
         "pulse-gold": "pulseGold 2.5s ease-in-out infinite",
-        "float-up": "floatUp 4s ease-in-out infinite",
-        "scale-in": "scaleIn 0.5s ease-out forwards",
+        "float-up":   "floatUp 4s ease-in-out infinite",
+        "scale-in":   "scaleIn 0.5s ease-out forwards",
       },
       backgroundImage: {
-        "dark-gradient":
-          "linear-gradient(160deg, #050e1a 0%, #0d1f35 40%, #1a3a5c 100%)",
+        "pitch-gradient":
+          "linear-gradient(160deg, #040d08 0%, #091a10 40%, #0f2d1a 75%, #1a4a28 100%)",
         "gold-shimmer":
           "linear-gradient(90deg, transparent, rgba(232,160,32,0.4), transparent)",
         "deep-gradient":
-          "linear-gradient(135deg, #0d1f35 0%, #1a3a5c 50%, #2d6a9f 100%)",
+          "linear-gradient(135deg, #091a10 0%, #0f2d1a 50%, #1a4a28 100%)",
       },
       backdropBlur: {
         xs: "2px",

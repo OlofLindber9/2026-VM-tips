@@ -25,7 +25,7 @@ export default function JoinGroupPage() {
     const data = await res.json();
     setLoading(false);
     if (!res.ok) {
-      setError(data.error || "Failed to join group");
+      setError(data.error || "Kunde inte gå med i gruppen");
     } else {
       router.push(`/groups/${data.id}`);
     }
@@ -34,17 +34,17 @@ export default function JoinGroupPage() {
   return (
     <div className="max-w-md mx-auto">
       <div className="mb-6">
-        <Link href="/groups" className="text-ski-ice text-sm hover:text-white transition-colors">← Back to groups</Link>
-        <h1 className="text-2xl font-bold text-white mt-2">Join a group</h1>
+        <Link href="/groups" className="text-app-ice text-sm hover:text-white transition-colors">← Tillbaka till grupper</Link>
+        <h1 className="text-2xl font-bold text-white mt-2">Gå med i en grupp</h1>
         <p className="text-white/50 text-sm mt-1">
-          Enter the 8-character invite code your friend shared with you.
+          Ange den 8-siffriga inbjudningskoden som din vän delade med dig.
         </p>
       </div>
 
       <div className="glass-card">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-1.5">Invite code</label>
+            <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-1.5">Inbjudningskod</label>
             <input
               type="text"
               required
@@ -61,7 +61,7 @@ export default function JoinGroupPage() {
           )}
 
           <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? "Joining…" : "Join group"}
+            {loading ? "Går med…" : "Gå med i grupp"}
           </button>
         </form>
       </div>

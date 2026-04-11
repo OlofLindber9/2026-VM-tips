@@ -24,7 +24,7 @@ export default function LoginPage() {
     });
 
     if (result?.error) {
-      setError("Invalid email or password");
+      setError("Fel e-postadress eller lösenord");
       setLoading(false);
     } else {
       router.push("/dashboard");
@@ -34,7 +34,6 @@ export default function LoginPage() {
 
   return (
     <div className="page-dark">
-      {/* Gold top accent */}
       <div
         className="absolute top-0 left-0 right-0 h-[2px]"
         style={{
@@ -47,25 +46,25 @@ export default function LoginPage() {
           href="/"
           className="absolute top-5 left-5 text-white/40 hover:text-white/70 text-sm font-medium transition-colors flex items-center gap-1"
         >
-          ← Home
+          ← Hem
         </Link>
 
         <div className="glass-card w-full max-w-sm animate-scale-in">
           <div className="text-center mb-6">
-            <div className="text-5xl mb-3">🏆</div>
+            <div className="text-5xl mb-3">⚽</div>
             <h1
               className="text-white text-3xl font-black uppercase"
               style={{ fontFamily: "var(--font-barlow), 'Barlow Condensed', sans-serif" }}
             >
-              Welcome back
+              Välkommen tillbaka
             </h1>
-            <p className="text-white/45 text-sm mt-1">Log in to VM Predictor</p>
+            <p className="text-white/45 text-sm mt-1">Logga in på 2026 VM-tips</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-1.5">
-                Email
+                E-post
               </label>
               <input
                 type="email"
@@ -73,12 +72,12 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="input-dark"
-                placeholder="you@example.com"
+                placeholder="du@exempel.se"
               />
             </div>
             <div>
               <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-1.5">
-                Password
+                Lösenord
               </label>
               <input
                 type="password"
@@ -108,14 +107,14 @@ export default function LoginPage() {
                 letterSpacing: "0.05em",
               }}
             >
-              {loading ? "Logging in…" : "LOG IN"}
+              {loading ? "Loggar in…" : "LOGGA IN"}
             </button>
           </form>
 
           <p className="text-center text-white/35 text-sm mt-5">
-            No account?{" "}
+            Inget konto?{" "}
             <Link href="/signup" className="text-app-accent hover:text-app-gold font-semibold transition-colors">
-              Sign up
+              Skapa ett
             </Link>
           </p>
         </div>

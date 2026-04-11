@@ -27,7 +27,6 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     orderBy: { createdAt: "desc" },
   });
 
-  // Leaderboard: sum scores per user
   const scoresByUser: Record<string, number> = {};
   const predictionsByUser: Record<
     string,
@@ -46,15 +45,12 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     });
   }
 
-  // Get display names from User table
   const userIds = group.members.map((m) => m.userId);
-  const users = await prisma.user.findMany({
-    where: { id: { in: userIds } },
-  });
+  const users = await prisma.user.findMany({ where: { id: { in: userIds } } });
   const userMap = Object.fromEntries(users.map((u) => [u.id, u.displayName]));
 
   function displayName(uid: string): string {
-    return userMap[uid] || "Member " + uid.slice(0, 6);
+    return userMap[uid] || "Deltagare " + uid.slice(0, 6);
   }
 
   const leaderboard = group.members
@@ -79,27 +75,29 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
       <div className="glass-card">
         <div className="flex justify-between items-start">
           <div>
-            <Link href="/groups" className="text-app-ice text-sm hover:text-white transition-colors">← My groups</Link>
+            <Link href="/groups" className="text-app-ice text-sm hover:text-white transition-colors">← Mina grupper</Link>
             <h1 className="text-2xl font-bold text-white mt-1">{group.name}</h1>
             <p className="text-white/50 text-sm mt-1">
-              {group.members.length} member{group.members.length !== 1 ? "s" : ""}
+              {group.members.length} {group.members.length !== 1 ? "deltagare" : "deltagare"}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-white/40 mb-1">Invite code</p>
-            <span className="font-mono font-bold text-app-ice px-3 py-1.5 rounded-lg text-sm tracking-widest"
-              style={{ background: "rgba(255,255,255,0.1)" }}>
+            <p className="text-xs text-white/40 mb-1">Inbjudningskod</p>
+            <span
+              className="font-mono font-bold text-app-ice px-3 py-1.5 rounded-lg text-sm tracking-widest"
+              style={{ background: "rgba(255,255,255,0.1)" }}
+            >
               {group.inviteCode}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Leaderboard */}
+      {/* Topplista */}
       <div className="glass-card">
-        <h2 className="font-bold text-white mb-4">🏆 Leaderboard</h2>
+        <h2 className="font-bold text-white mb-4">🏆 Topplista</h2>
         {leaderboard.length === 0 ? (
-          <p className="text-white/40 text-sm">No members yet.</p>
+          <p className="text-white/40 text-sm">Inga deltagare ännu.</p>
         ) : (
           <div className="space-y-2">
             {leaderboard.map((entry, i) => {
@@ -111,7 +109,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
                   className="flex items-center gap-4 px-4 py-3 rounded-xl border transition-all"
                   style={{
                     background: isCurrentUser
-                      ? "rgba(168, 212, 240, 0.12)"
+                      ? "rgba(184, 240, 200, 0.10)"
                       : i === 0
                       ? "rgba(245, 200, 66, 0.12)"
                       : i === 1
@@ -120,7 +118,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
                       ? "rgba(232, 160, 32, 0.08)"
                       : "rgba(255, 255, 255, 0.04)",
                     borderColor: isCurrentUser
-                      ? "rgba(168, 212, 240, 0.3)"
+                      ? "rgba(184, 240, 200, 0.25)"
                       : i < 3
                       ? "rgba(232, 160, 32, 0.2)"
                       : "rgba(255, 255, 255, 0.08)",
@@ -133,11 +131,11 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
                     <span className="font-semibold text-sm text-white">
                       {entry.displayName}
                       {isCurrentUser && (
-                        <span className="ml-2 text-xs text-app-ice">(you)</span>
+                        <span className="ml-2 text-xs text-app-ice">(du)</span>
                       )}
                     </span>
                     <div className="text-xs text-white/40 mt-0.5">
-                      {entry.scoredCount} event{entry.scoredCount !== 1 ? "s" : ""} scored
+                      {entry.scoredCount} {entry.scoredCount !== 1 ? "matcher" : "match"} poängsatta
                     </div>
                   </div>
                   <span className="font-bold text-app-accent text-lg">
@@ -150,15 +148,13 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
         )}
       </div>
 
-      {/* Upcoming events to predict */}
+      {/* Kommande matcher */}
       {upcomingRaces.length > 0 && (
         <div className="glass-card">
-          <h2 className="font-bold text-white mb-4">Predict upcoming events</h2>
+          <h2 className="font-bold text-white mb-4">Tippa kommande matcher</h2>
           <div className="space-y-2">
             {upcomingRaces.map((race) => {
-              const myPrediction = predictionsByUser[userId]?.find(
-                (p) => p.race.id === race.id
-              );
+              const myPrediction = predictionsByUser[userId]?.find((p) => p.race.id === race.id);
               return (
                 <Link
                   key={race.id}
@@ -170,9 +166,9 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
                     <div className="text-xs text-white/40 mt-0.5">{format(race.date)}</div>
                   </div>
                   {myPrediction ? (
-                    <span className="badge badge-green">Predicted</span>
+                    <span className="badge badge-green">Tippat</span>
                   ) : (
-                    <span className="badge badge-yellow">Predict →</span>
+                    <span className="badge badge-yellow">Tippa →</span>
                   )}
                 </Link>
               );

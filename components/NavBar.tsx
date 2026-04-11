@@ -14,16 +14,16 @@ export default function NavBar({ user }: NavBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const links = [
-    { href: "/dashboard", label: "Dashboard", icon: "🏠" },
-    { href: "/races", label: "Events", icon: "🏁" },
-    { href: "/groups", label: "My Groups", icon: "👥" },
+    { href: "/dashboard", label: "Hem",         icon: "🏠" },
+    { href: "/races",     label: "Matcher",      icon: "⚽" },
+    { href: "/groups",    label: "Mina grupper", icon: "👥" },
   ];
 
   return (
     <nav
       className="sticky top-0 z-50 text-white shadow-lg border-b border-white/10"
       style={{
-        background: "rgba(13, 31, 53, 0.95)",
+        background: "rgba(9, 26, 16, 0.96)",
         backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",
       }}
@@ -44,10 +44,10 @@ export default function NavBar({ user }: NavBarProps) {
           className="flex items-center gap-2 font-black text-lg tracking-tight"
           style={{ fontFamily: "var(--font-barlow), 'Barlow Condensed', sans-serif" }}
         >
-          <span className="text-xl">🏆</span>
+          <span className="text-xl">⚽</span>
           <span className="hidden sm:inline">
-            <span className="text-app-accent">VM</span>
-            <span className="text-white"> Predictor</span>
+            <span className="text-app-accent">2026</span>
+            <span className="text-white"> VM-tips</span>
           </span>
         </Link>
 
@@ -66,7 +66,7 @@ export default function NavBar({ user }: NavBarProps) {
                 {active && (
                   <span
                     className="absolute inset-0 rounded-lg"
-                    style={{ background: "rgba(255,255,255,0.1)" }}
+                    style={{ background: "rgba(255,255,255,0.08)" }}
                   />
                 )}
                 <span className="relative">{l.label}</span>
@@ -88,7 +88,7 @@ export default function NavBar({ user }: NavBarProps) {
               className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
               style={{
                 background: "linear-gradient(135deg, #f5c842, #e8a020)",
-                color: "#0d1f35",
+                color: "#091a10",
               }}
             >
               {user.displayName.charAt(0).toUpperCase()}
@@ -100,14 +100,14 @@ export default function NavBar({ user }: NavBarProps) {
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="text-xs text-white/40 hover:text-white/75 transition-colors font-medium border border-white/15 px-3 py-1 rounded-lg hover:border-white/30"
           >
-            Log out
+            Logga ut
           </button>
 
           {/* Mobile menu toggle */}
           <button
             className="sm:hidden p-1 text-white/55 hover:text-white transition-colors"
             onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Menu"
+            aria-label="Meny"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -125,7 +125,7 @@ export default function NavBar({ user }: NavBarProps) {
       {menuOpen && (
         <div
           className="sm:hidden border-t border-white/10 px-4 pb-4 pt-2 flex flex-col gap-1"
-          style={{ background: "rgba(13, 31, 53, 0.98)" }}
+          style={{ background: "rgba(9, 26, 16, 0.99)" }}
         >
           {links.map((l) => {
             const active = pathname.startsWith(l.href);
@@ -155,7 +155,7 @@ export default function NavBar({ user }: NavBarProps) {
               onClick={() => signOut({ callbackUrl: "/login" })}
               className="text-xs text-white/35 hover:text-white transition-colors"
             >
-              Log out
+              Logga ut
             </button>
           </div>
         </div>

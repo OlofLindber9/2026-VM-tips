@@ -29,10 +29,6 @@ interface Props {
   locked?: boolean;
 }
 
-// ---------------------------------------------------------------------------
-// Custom athlete picker — extracted so it can safely use its own hooks
-// ---------------------------------------------------------------------------
-
 interface AthleteSelectProps {
   label: string;
   value: string;
@@ -77,14 +73,13 @@ function AthleteSelect({ label, value, onChange, position, athletes, disabled }:
         {medals[position - 1]} {label}
       </label>
 
-      {/* Trigger button */}
       <button
         type="button"
         onClick={isOpen ? close : open}
         disabled={disabled}
         className="w-full flex items-center justify-between rounded-xl px-4 py-2.5 text-sm transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
         style={{
-          background: "rgba(255,255,255,0.08)",
+          background: "rgba(255,255,255,0.07)",
           border: selected
             ? "1px solid rgba(232,160,32,0.5)"
             : "1px solid rgba(255,255,255,0.15)",
@@ -95,16 +90,13 @@ function AthleteSelect({ label, value, onChange, position, athletes, disabled }:
             <span className="text-white font-medium truncate">{selected.name}</span>
             <span
               className="text-xs shrink-0 px-1.5 py-0.5 rounded-md font-semibold"
-              style={{
-                background: "rgba(232,160,32,0.15)",
-                color: "rgb(232,160,32)",
-              }}
+              style={{ background: "rgba(232,160,32,0.15)", color: "rgb(232,160,32)" }}
             >
               {selected.nationCode}
             </span>
           </span>
         ) : (
-          <span className="text-white/35">— select athlete —</span>
+          <span className="text-white/35">— välj lag —</span>
         )}
         <svg
           className={`w-4 h-4 text-white/40 shrink-0 ml-2 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
@@ -116,26 +108,22 @@ function AthleteSelect({ label, value, onChange, position, athletes, disabled }:
         </svg>
       </button>
 
-      {/* Dropdown */}
       {isOpen && (
         <>
-          {/* Backdrop — closes dropdown on outside click */}
           <div className="fixed inset-0 z-40" onClick={close} />
-
           <div
             className="absolute left-0 right-0 mt-1.5 z-50 rounded-xl overflow-hidden shadow-2xl"
             style={{
-              background: "rgba(6,16,32,0.98)",
+              background: "rgba(4,13,8,0.98)",
               border: "1px solid rgba(255,255,255,0.12)",
               backdropFilter: "blur(24px)",
               WebkitBackdropFilter: "blur(24px)",
             }}
           >
-            {/* Search */}
             <div className="p-2 border-b border-white/8">
               <input
                 type="text"
-                placeholder="Search athletes…"
+                placeholder="Sök lag…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
@@ -144,10 +132,9 @@ function AthleteSelect({ label, value, onChange, position, athletes, disabled }:
               />
             </div>
 
-            {/* Options */}
             <div className="max-h-60 overflow-y-auto overscroll-contain">
               {filtered.length === 0 ? (
-                <div className="px-4 py-4 text-sm text-white/30 text-center">No athletes found</div>
+                <div className="px-4 py-4 text-sm text-white/30 text-center">Inga lag hittades</div>
               ) : (
                 filtered.map((a) => {
                   const isSelected = a.id === value;
@@ -163,8 +150,7 @@ function AthleteSelect({ label, value, onChange, position, athletes, disabled }:
                           : { color: "rgba(255,255,255,0.75)" }
                       }
                       onMouseEnter={(e) => {
-                        if (!isSelected)
-                          e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                        if (!isSelected) e.currentTarget.style.background = "rgba(255,255,255,0.06)";
                       }}
                       onMouseLeave={(e) => {
                         if (!isSelected) e.currentTarget.style.background = "";
@@ -176,10 +162,7 @@ function AthleteSelect({ label, value, onChange, position, athletes, disabled }:
                         style={
                           isSelected
                             ? { background: "rgba(232,160,32,0.2)", color: "rgb(232,160,32)" }
-                            : {
-                                background: "rgba(255,255,255,0.08)",
-                                color: "rgba(255,255,255,0.4)",
-                              }
+                            : { background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)" }
                         }
                       >
                         {a.nationCode}
@@ -196,10 +179,6 @@ function AthleteSelect({ label, value, onChange, position, athletes, disabled }:
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main form
-// ---------------------------------------------------------------------------
-
 export default function PredictionForm({
   race,
   groups,
@@ -209,7 +188,6 @@ export default function PredictionForm({
 }: Props) {
   const [selectedGroup, setSelectedGroup] = useState(groups[0]?.id || "");
 
-  // Pre-fill form from the existing prediction for the initial group
   const initialPred = existingPredictions.find((p) => p.groupId === groups[0]?.id);
   const [first, setFirst] = useState(initialPred?.first || "");
   const [second, setSecond] = useState(initialPred?.second || "");
@@ -220,7 +198,6 @@ export default function PredictionForm({
 
   const isCompleted = race.status === "completed";
   const isLocked = isCompleted || locked;
-
   const existing = existingPredictions.find((p) => p.groupId === selectedGroup);
 
   function handleGroupChange(groupId: string) {
@@ -250,11 +227,11 @@ export default function PredictionForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!first || !second || !third) {
-      setError("Please select all three podium positions.");
+      setError("Välj alla tre positionerna.");
       return;
     }
     if (first === second || first === third || second === third) {
-      setError("Each position must be a different athlete.");
+      setError("Varje position måste ha ett unikt lag.");
       return;
     }
 
@@ -271,7 +248,7 @@ export default function PredictionForm({
     const data = await res.json();
     setLoading(false);
     if (!res.ok) {
-      setError(data.error || "Something went wrong");
+      setError(data.error || "Något gick fel");
     } else {
       setSuccess(true);
     }
@@ -286,7 +263,7 @@ export default function PredictionForm({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="font-bold text-white">
-            {isLocked || existing ? "Your prediction" : "Make your prediction"}
+            {isLocked || existing ? "Ditt tips" : "Lägg ditt tips"}
           </h2>
           {existing && !isLocked && (
             <span
@@ -304,20 +281,20 @@ export default function PredictionForm({
                   clipRule="evenodd"
                 />
               </svg>
-              Submitted
+              Sparat
             </span>
           )}
         </div>
         {existing?.score !== null && existing?.score !== undefined && (
-          <span className="text-ski-accent font-bold text-lg">{existing.score} pts</span>
+          <span className="text-app-accent font-bold text-lg">{existing.score} pts</span>
         )}
       </div>
 
-      {/* Group selector */}
+      {/* Gruppselektor */}
       {groups.length > 1 && (
         <div>
           <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-1.5">
-            Group
+            Grupp
           </label>
           <select
             value={selectedGroup}
@@ -325,28 +302,20 @@ export default function PredictionForm({
             className="select-dark"
           >
             {groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
+              <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </select>
         </div>
       )}
 
-      {/* Current picks summary — shown when prediction exists and race is still editable */}
+      {/* Nuvarande tips — visas när tippet finns och matchen fortfarande kan ändras */}
       {existing && !isLocked && (
         <div
           className="rounded-xl p-3 space-y-2"
-          style={{
-            background: "rgba(52, 211, 153, 0.06)",
-            border: "1px solid rgba(52, 211, 153, 0.2)",
-          }}
+          style={{ background: "rgba(52, 211, 153, 0.06)", border: "1px solid rgba(52, 211, 153, 0.2)" }}
         >
-          <p
-            className="text-xs font-semibold uppercase tracking-wider"
-            style={{ color: "rgba(110, 231, 183, 0.65)" }}
-          >
-            Current picks
+          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(110, 231, 183, 0.65)" }}>
+            Nuvarande tips
           </p>
           {[
             { medal: "🥇", id: existing.first },
@@ -359,11 +328,11 @@ export default function PredictionForm({
               <span className="ml-auto text-xs text-white/35">{athleteNation(id)}</span>
             </div>
           ))}
-          <p className="text-xs text-white/30 pt-0.5">Use the dropdowns below to change</p>
+          <p className="text-xs text-white/30 pt-0.5">Använd listorna nedan för att ändra</p>
         </div>
       )}
 
-      {/* Read-only prediction summary — race is locked (past or completed) */}
+      {/* Låst vy — matchen är passerad eller avslutad */}
       {isLocked && existing ? (
         <div className="space-y-2">
           {[
@@ -387,12 +356,12 @@ export default function PredictionForm({
         </div>
       ) : isLocked ? (
         <p className="text-sm text-white/40 text-center py-4">
-          Predictions are closed for this race.
+          Tipsningen är stängd för den här matchen.
         </p>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <AthleteSelect
-            label="Winner (1st)"
+            label="Vinnare (1:a)"
             value={first}
             onChange={setFirst}
             position={1}
@@ -400,7 +369,7 @@ export default function PredictionForm({
             disabled={isLocked}
           />
           <AthleteSelect
-            label="2nd place"
+            label="2:a plats"
             value={second}
             onChange={setSecond}
             position={2}
@@ -408,7 +377,7 @@ export default function PredictionForm({
             disabled={isLocked}
           />
           <AthleteSelect
-            label="3rd place"
+            label="3:e plats"
             value={third}
             onChange={setThird}
             position={3}
@@ -423,19 +392,19 @@ export default function PredictionForm({
           )}
           {success && (
             <div className="text-emerald-300 text-sm bg-emerald-900/30 border border-emerald-500/30 rounded-xl px-4 py-2.5">
-              Prediction saved!
+              Tipset är sparat!
             </div>
           )}
 
           <button type="submit" disabled={loading || isLocked} className="btn-primary w-full">
-            {loading ? "Saving…" : existing ? "Update prediction" : "Submit prediction"}
+            {loading ? "Sparar…" : existing ? "Uppdatera tips" : "Skicka tips"}
           </button>
         </form>
       )}
 
       {!isLocked && !existing && athletePool.length === 0 && (
         <p className="text-sm text-white/40 text-center py-4">
-          Athlete list not available yet. Check back closer to race day.
+          Laglistan är inte tillgänglig ännu. Kom tillbaka närmre matchen.
         </p>
       )}
     </div>
