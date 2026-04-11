@@ -15,38 +15,33 @@ model User {
   createdAt   DateTime @default(now())
 }
 
-model Race {
-  id          String   @id
-  name        String
+model Team {
+  id          String   @id  // 3-letter FIFA code, e.g. "BRA", "ARG", "ENG"
+  name        String         // Display name in Swedish, e.g. "Brasilien"
+  group       String?        // "A"–"L"; null if not yet assigned
+  homeMatches Match[]  @relation("HomeTeam")
+  awayMatches Match[]  @relation("AwayTeam")
+}
+
+model Match {
+  id          String   @id @default(cuid())
+  homeTeamId  String
+  awayTeamId  String
+  homeTeam    Team     @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam    Team     @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  scheduledAt DateTime
   venue       String
-  country     String
-  date        DateTime
-  discipline  String
-  gender      String   // "M" or "W"
+  city        String
+  country     String   // "USA" | "Canada" | "Mexico"
+  stage       String   // "group" | "r32" | "r16" | "qf" | "sf" | "3p" | "final"
+  group       String?  // "A"–"L" for group stage; null for knockouts
+  matchNumber Int?     // official FIFA match number
   status      String   @default("upcoming") // "upcoming" | "completed"
-  results     Result[]
+  homeScore   Int?     // null until played
+  awayScore   Int?     // null until played
   predictions Prediction[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-}
-
-model Athlete {
-  id         String   @id
-  name       String
-  nationCode String
-  gender     String?  // "M" or "W"
-  results    Result[]
-}
-
-model Result {
-  id        String  @id @default(cuid())
-  raceId    String
-  athleteId String
-  rank      Int?    // null = DNF/DSQ
-  race      Race    @relation(fields: [raceId], references: [id])
-  athlete   Athlete @relation(fields: [athleteId], references: [id])
-
-  @@unique([raceId, athleteId])
 }
 
 model Group {
@@ -69,22 +64,22 @@ model GroupMembership {
   @@unique([userId, groupId])
 }
 
-// Scoring: 3 pts if predicted 1st = actual 1st
-//          +1 pt if predicted 2nd appears anywhere in actual top 3
-//          +1 pt if predicted 3rd appears anywhere in actual top 3
+// Scoring:
+//   3 pts — exact score (predictedHome == homeScore && predictedAway == awayScore)
+//   1 pt  — correct match result (W/D/L) but wrong score
+//   0 pts — wrong result
 model Prediction {
-  id        String   @id @default(cuid())
-  userId    String   // User.id
-  raceId    String
-  groupId   String
-  first     String   // athlete/team ID
-  second    String
-  third     String
-  score     Int?     // null until race is completed and scored
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  race      Race     @relation(fields: [raceId], references: [id])
-  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  userId        String   // User.id
+  matchId       String
+  groupId       String
+  predictedHome Int      // predicted home team goals
+  predictedAway Int      // predicted away team goals
+  score         Int?     // null until match is complete and scored
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  match         Match    @relation(fields: [matchId], references: [id])
+  group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, raceId, groupId])
+  @@unique([userId, matchId, groupId])
 }

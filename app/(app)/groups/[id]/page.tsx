@@ -22,26 +22,30 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
   const predictions = await prisma.prediction.findMany({
     where: { groupId: id },
     include: {
-      race: { select: { id: true, name: true, date: true, status: true, discipline: true, gender: true } },
+      match: {
+        include: { homeTeam: true, awayTeam: true },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
 
   const scoresByUser: Record<string, number> = {};
-  const predictionsByUser: Record<
-    string,
-    Array<{ race: typeof predictions[number]["race"]; score: number | null; first: string; second: string; third: string }>
-  > = {};
+  type PredEntry = {
+    match: (typeof predictions)[number]["match"];
+    score: number | null;
+    predictedHome: number;
+    predictedAway: number;
+  };
+  const predictionsByUser: Record<string, PredEntry[]> = {};
 
   for (const pred of predictions) {
     scoresByUser[pred.userId] = (scoresByUser[pred.userId] || 0) + (pred.score ?? 0);
     if (!predictionsByUser[pred.userId]) predictionsByUser[pred.userId] = [];
     predictionsByUser[pred.userId].push({
-      race: pred.race,
+      match: pred.match,
       score: pred.score,
-      first: pred.first,
-      second: pred.second,
-      third: pred.third,
+      predictedHome: pred.predictedHome,
+      predictedAway: pred.predictedAway,
     });
   }
 
@@ -63,10 +67,11 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     }))
     .sort((a, b) => b.totalScore - a.totalScore);
 
-  const upcomingRaces = await prisma.race.findMany({
-    where: { status: "upcoming", date: { gte: new Date() } },
-    orderBy: { date: "asc" },
+  const upcomingMatches = await prisma.match.findMany({
+    where: { status: "upcoming", scheduledAt: { gte: new Date() } },
+    orderBy: { scheduledAt: "asc" },
     take: 5,
+    include: { homeTeam: true, awayTeam: true },
   });
 
   return (
@@ -78,7 +83,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
             <Link href="/groups" className="text-app-ice text-sm hover:text-white transition-colors">← Mina grupper</Link>
             <h1 className="text-2xl font-bold text-white mt-1">{group.name}</h1>
             <p className="text-white/50 text-sm mt-1">
-              {group.members.length} {group.members.length !== 1 ? "deltagare" : "deltagare"}
+              {group.members.length} deltagare
             </p>
           </div>
           <div className="text-right">
@@ -93,7 +98,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* Topplista */}
+      {/* Leaderboard */}
       <div className="glass-card">
         <h2 className="font-bold text-white mb-4">🏆 Topplista</h2>
         {leaderboard.length === 0 ? (
@@ -148,27 +153,31 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
         )}
       </div>
 
-      {/* Kommande matcher */}
-      {upcomingRaces.length > 0 && (
+      {/* Upcoming matches to predict */}
+      {upcomingMatches.length > 0 && (
         <div className="glass-card">
           <h2 className="font-bold text-white mb-4">Tippa kommande matcher</h2>
           <div className="space-y-2">
-            {upcomingRaces.map((race) => {
-              const myPrediction = predictionsByUser[userId]?.find((p) => p.race.id === race.id);
+            {upcomingMatches.map((m) => {
+              const myPrediction = predictionsByUser[userId]?.find((p) => p.match.id === m.id);
               return (
                 <Link
-                  key={race.id}
-                  href={`/races/${race.id}`}
+                  key={m.id}
+                  href={`/races/${m.id}`}
                   className="flex items-center justify-between p-3 rounded-xl border border-white/10 hover:border-white/25 hover:bg-white/8 transition-all"
                 >
                   <div>
-                    <div className="font-medium text-sm text-white/90">{race.name}</div>
-                    <div className="text-xs text-white/40 mt-0.5">{format(race.date)}</div>
+                    <div className="font-medium text-sm text-white/90">
+                      {m.homeTeam.name} vs {m.awayTeam.name}
+                    </div>
+                    <div className="text-xs text-white/40 mt-0.5">{format(m.scheduledAt)}</div>
                   </div>
                   {myPrediction ? (
-                    <span className="badge badge-green">Tippat</span>
+                    <span className="badge badge-green shrink-0">
+                      {myPrediction.predictedHome}–{myPrediction.predictedAway}
+                    </span>
                   ) : (
-                    <span className="badge badge-yellow">Tippa →</span>
+                    <span className="badge badge-yellow shrink-0">Tippa →</span>
                   )}
                 </Link>
               );

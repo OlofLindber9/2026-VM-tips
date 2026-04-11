@@ -1,50 +1,27 @@
 /**
- * Scoring rules:
- *   3 pts  — predicted 1st place is the actual winner
- *   +1 pt  — predicted 2nd place finished anywhere on the podium (top 3)
- *   +1 pt  — predicted 3rd place finished anywhere on the podium (top 3)
+ * Football prediction scoring rules:
+ *   3 pts — exact score (e.g. predicted 2-1, actual 2-1)
+ *   1 pt  — correct match result (W/D/L) but wrong score
+ *   0 pts — wrong result
  *
- * Maximum score per event: 5 pts
+ * Maximum score per match: 3 pts
  */
 
-export interface PodiumActual {
-  first: string;   // participant ID
-  second: string;
-  third: string;
-}
+export type MatchResult = "home" | "draw" | "away";
 
-export interface PodiumPrediction {
-  first: string;
-  second: string;
-  third: string;
+export function getResult(home: number, away: number): MatchResult {
+  if (home > away) return "home";
+  if (away > home) return "away";
+  return "draw";
 }
 
 export function calculateScore(
-  prediction: PodiumPrediction,
-  actual: PodiumActual
+  predictedHome: number,
+  predictedAway: number,
+  actualHome: number,
+  actualAway: number
 ): number {
-  const actualPodium = new Set([actual.first, actual.second, actual.third]);
-  let score = 0;
-
-  if (prediction.first === actual.first) score += 3;
-  if (actualPodium.has(prediction.second)) score += 1;
-  if (actualPodium.has(prediction.third)) score += 1;
-
-  return score;
-}
-
-export function getPodiumFromResults(
-  results: Array<{ athleteId: string; rank: number | null }>
-): PodiumActual | null {
-  const sorted = results
-    .filter((r) => r.rank !== null)
-    .sort((a, b) => a.rank! - b.rank!);
-
-  if (sorted.length < 3) return null;
-
-  return {
-    first: sorted[0].athleteId,
-    second: sorted[1].athleteId,
-    third: sorted[2].athleteId,
-  };
+  if (predictedHome === actualHome && predictedAway === actualAway) return 3;
+  if (getResult(predictedHome, predictedAway) === getResult(actualHome, actualAway)) return 1;
+  return 0;
 }

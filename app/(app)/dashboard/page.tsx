@@ -1,17 +1,18 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { format, genderLabel, genderColor } from "@/lib/utils";
+import { format } from "@/lib/utils";
 
 export default async function DashboardPage() {
   const session = await auth();
   const userId = session!.user.id;
   const displayName = session!.user?.name || session!.user?.email?.split("@")[0] || "Spelare";
 
-  const upcomingRaces = await prisma.race.findMany({
-    where: { status: "upcoming", date: { gte: new Date() } },
-    orderBy: { date: "asc" },
+  const upcomingMatches = await prisma.match.findMany({
+    where: { status: "upcoming", scheduledAt: { gte: new Date() } },
+    orderBy: { scheduledAt: "asc" },
     take: 3,
+    include: { homeTeam: true, awayTeam: true },
   });
 
   const memberships = await prisma.groupMembership.findMany({
@@ -27,7 +28,7 @@ export default async function DashboardPage() {
 
   const recentPredictions = await prisma.prediction.findMany({
     where: { userId, score: { not: null } },
-    include: { race: true },
+    include: { match: { include: { homeTeam: true, awayTeam: true } } },
     orderBy: { updatedAt: "desc" },
     take: 5,
   });
@@ -42,7 +43,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Kommande matcher */}
+        {/* Upcoming matches */}
         <div className="glass-card col-span-full lg:col-span-2">
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-bold text-white">Kommande matcher</h2>
@@ -50,32 +51,32 @@ export default async function DashboardPage() {
               Visa alla →
             </Link>
           </div>
-          {upcomingRaces.length === 0 ? (
+          {upcomingMatches.length === 0 ? (
             <p className="text-white/40 text-sm">Inga kommande matcher — kom tillbaka snart.</p>
           ) : (
             <div className="space-y-3">
-              {upcomingRaces.map((race) => (
+              {upcomingMatches.map((m) => (
                 <Link
-                  key={race.id}
-                  href={`/races/${race.id}`}
+                  key={m.id}
+                  href={`/races/${m.id}`}
                   className="flex items-center justify-between p-3 rounded-xl border border-white/10 hover:border-white/25 hover:bg-white/8 transition-all"
                 >
                   <div>
-                    <div className="font-medium text-sm text-white/90">{race.name}</div>
+                    <div className="font-medium text-sm text-white/90">
+                      {m.homeTeam.name} vs {m.awayTeam.name}
+                    </div>
                     <div className="text-xs text-white/40 mt-0.5">
-                      {format(race.date)} · {race.country}
+                      {format(m.scheduledAt)} · {m.city}
                     </div>
                   </div>
-                  <span className={`badge ${genderColor(race.gender)}`}>
-                    {genderLabel(race.gender)}
-                  </span>
+                  <span className="badge badge-blue shrink-0">Tippa →</span>
                 </Link>
               ))}
             </div>
           )}
         </div>
 
-        {/* Mina grupper */}
+        {/* My groups */}
         <div className="glass-card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-bold text-white">Mina grupper</h2>
@@ -100,7 +101,7 @@ export default async function DashboardPage() {
                 >
                   <span className="font-medium text-sm text-white/90">{m.group.name}</span>
                   <span className="text-xs text-white/40">
-                    {m.group._count.members} {m.group._count.members !== 1 ? "deltagare" : "deltagare"}
+                    {m.group._count.members} deltagare
                   </span>
                 </Link>
               ))}
@@ -109,14 +110,16 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Senaste poäng */}
+      {/* Recent scored predictions */}
       {recentPredictions.length > 0 && (
         <div className="glass-card">
           <h2 className="font-bold text-white mb-4">Senaste poäng</h2>
           <div className="space-y-2">
             {recentPredictions.map((p) => (
               <div key={p.id} className="flex items-center justify-between text-sm">
-                <span className="text-white/70">{p.race.name}</span>
+                <span className="text-white/70">
+                  {p.match.homeTeam.name} vs {p.match.awayTeam.name}
+                </span>
                 <span className="font-bold text-app-accent">{p.score} pts</span>
               </div>
             ))}

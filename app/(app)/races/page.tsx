@@ -1,29 +1,27 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { format, genderLabel, genderColor, disciplineColor } from "@/lib/utils";
+import { format, stageLabel, stageColor } from "@/lib/utils";
+import { getResult } from "@/lib/scoring";
 
 export default async function RacesPage() {
-  const races = await prisma.race.findMany({
-    orderBy: { date: "asc" },
+  const matches = await prisma.match.findMany({
+    orderBy: { scheduledAt: "asc" },
     include: {
-      _count: { select: { predictions: true, results: true } },
-      results: {
-        where: { rank: 1 },
-        include: { athlete: true },
-        take: 1,
-      },
+      homeTeam: true,
+      awayTeam: true,
+      _count: { select: { predictions: true } },
     },
   });
 
   const now = new Date();
-  const upcoming = races.filter((r) => r.status === "upcoming" && r.date >= now);
-  const past = races.filter((r) => r.status === "completed" || r.date < now);
+  const upcoming = matches.filter((m) => m.status === "upcoming" && m.scheduledAt >= now);
+  const past = matches.filter((m) => m.status === "completed" || m.scheduledAt < now);
 
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold text-white">VM 2026 — Matcher</h1>
 
-      {races.length === 0 && (
+      {matches.length === 0 && (
         <div className="glass-card text-center py-12">
           <div className="text-4xl mb-3">📅</div>
           <p className="text-white/50 mb-2">Inga matcher tillagda ännu.</p>
@@ -35,8 +33,8 @@ export default async function RacesPage() {
         <section>
           <h2 className="font-bold text-lg text-white/70 mb-3">Kommande</h2>
           <div className="grid gap-3">
-            {upcoming.map((race) => (
-              <RaceCard key={race.id} race={race} />
+            {upcoming.map((m) => (
+              <MatchCard key={m.id} match={m} />
             ))}
           </div>
         </section>
@@ -46,8 +44,8 @@ export default async function RacesPage() {
         <section>
           <h2 className="font-bold text-lg text-white/70 mb-3">Avslutade</h2>
           <div className="grid gap-3">
-            {past.map((race) => (
-              <RaceCard key={race.id} race={race} />
+            {past.map((m) => (
+              <MatchCard key={m.id} match={m} />
             ))}
           </div>
         </section>
@@ -56,49 +54,82 @@ export default async function RacesPage() {
   );
 }
 
-function RaceCard({
-  race,
-}: {
-  race: {
-    id: string;
-    name: string;
-    venue: string;
-    country: string;
-    date: Date;
-    discipline: string;
-    gender: string;
-    status: string;
-    _count: { predictions: number; results: number };
-    results: { rank: number | null; athlete: { name: string; nationCode: string } }[];
-  };
-}) {
-  const isCompleted = race.status === "completed";
-  const isPast = isCompleted || race.date < new Date();
-  const winner = race.results[0]?.athlete;
+type MatchCardMatch = {
+  id: string;
+  homeTeam: { id: string; name: string };
+  awayTeam: { id: string; name: string };
+  scheduledAt: Date;
+  venue: string;
+  city: string;
+  country: string;
+  stage: string;
+  group: string | null;
+  status: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  _count: { predictions: number };
+};
+
+function MatchCard({ match }: { match: MatchCardMatch }) {
+  const isCompleted = match.status === "completed";
+  const isPast = isCompleted || match.scheduledAt < new Date();
+  const hasScore = isCompleted && match.homeScore !== null && match.awayScore !== null;
+  const result = hasScore ? getResult(match.homeScore!, match.awayScore!) : null;
+
+  const homeWon = result === "home";
+  const awayWon = result === "away";
 
   return (
     <Link
-      href={`/races/${race.id}`}
-      className={`glass-card hover:border-white/30 hover:shadow-xl transition-all flex items-center justify-between gap-4 overflow-hidden ${isPast && !isCompleted ? "opacity-50" : ""}`}
+      href={`/races/${match.id}`}
+      className={`glass-card hover:border-white/30 hover:shadow-xl transition-all overflow-hidden ${isPast && !isCompleted ? "opacity-50" : ""}`}
     >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 mb-1">
-          <span className={`badge ${disciplineColor(race.discipline)}`}>{race.discipline}</span>
-          <span className={`badge ${genderColor(race.gender)}`}>{genderLabel(race.gender)}</span>
-          {isCompleted && <span className="badge badge-green">Avslutad</span>}
-        </div>
-        <div className="font-semibold text-white truncate">{race.name}</div>
-        <div className="text-sm text-white/40 mt-0.5 truncate">
-          {format(race.date)} · {race.venue}, {race.country}
-        </div>
-        {winner && (
-          <div className="text-sm text-white/50 mt-1 truncate">
-            🥇 {winner.name} ({winner.nationCode})
-          </div>
-        )}
+      <div className="flex items-center gap-2 mb-3">
+        <span className={`badge ${stageColor(match.stage)}`}>{stageLabel(match.stage)}</span>
+        {match.group && <span className="badge badge-gray">Grupp {match.group}</span>}
+        {isCompleted && <span className="badge badge-green">Avslutad</span>}
+        {!isCompleted && !isPast && <span className="badge badge-blue">Kommande</span>}
       </div>
-      <div className="text-right text-xs text-white/40 shrink-0">
-        <div>{race._count.predictions} tips</div>
+
+      {/* Teams + score row */}
+      <div className="flex items-center gap-3">
+        {/* Home team */}
+        <span
+          className={`flex-1 text-right font-semibold truncate ${homeWon ? "text-white" : "text-white/70"}`}
+        >
+          {match.homeTeam.name}
+        </span>
+
+        {/* Score / time */}
+        {hasScore ? (
+          <span
+            className="shrink-0 text-xl font-black tabular-nums px-3 py-1 rounded-lg"
+            style={{
+              background: "rgba(255,255,255,0.08)",
+              color:
+                result === "draw"
+                  ? "rgb(253, 224, 71)"
+                  : result === "home"
+                  ? "rgb(110, 231, 183)"
+                  : "rgb(253, 164, 175)",
+            }}
+          >
+            {match.homeScore} – {match.awayScore}
+          </span>
+        ) : (
+          <span className="shrink-0 text-sm text-white/40 px-2">vs</span>
+        )}
+
+        {/* Away team */}
+        <span
+          className={`flex-1 text-left font-semibold truncate ${awayWon ? "text-white" : "text-white/70"}`}
+        >
+          {match.awayTeam.name}
+        </span>
+      </div>
+
+      <div className="text-xs text-white/35 mt-2 text-center">
+        {format(match.scheduledAt)} · {match.city} · {match._count.predictions} tips
       </div>
     </Link>
   );

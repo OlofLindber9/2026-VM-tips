@@ -2,26 +2,21 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { format, disciplineColor, genderLabel, genderColor } from "@/lib/utils";
+import { formatWithTime, stageLabel, stageColor } from "@/lib/utils";
 import PredictionForm from "@/components/PredictionForm";
-import ResultsPodium from "@/components/ResultsPodium";
+import MatchResult from "@/components/ResultsPodium";
 
-export default async function RacePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function MatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await auth();
   const userId = session!.user.id;
 
-  const race = await prisma.race.findUnique({
+  const match = await prisma.match.findUnique({
     where: { id },
-    include: {
-      results: {
-        orderBy: { rank: "asc" },
-        include: { athlete: true },
-      },
-    },
+    include: { homeTeam: true, awayTeam: true },
   });
 
-  if (!race) notFound();
+  if (!match) notFound();
 
   const memberships = await prisma.groupMembership.findMany({
     where: { userId },
@@ -29,61 +24,65 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
   });
 
   const existingPredictions = await prisma.prediction.findMany({
-    where: { userId, raceId: id },
-    include: { race: { select: { name: true } } },
+    where: { userId, matchId: id },
   });
 
-  let athletePool: { id: string; name: string; nationCode: string }[] = [];
-
-  if (race.results.length > 0) {
-    athletePool = race.results.map((r) => ({
-      id: r.athlete.id,
-      name: r.athlete.name,
-      nationCode: r.athlete.nationCode,
-    }));
-  } else {
-    athletePool = await prisma.athlete.findMany({
-      where: { gender: race.gender },
-      orderBy: { name: "asc" },
-    });
-  }
-
-  const podium =
-    race.results.length >= 3
-      ? { first: race.results[0], second: race.results[1], third: race.results[2] }
-      : null;
-
-  const isCompleted = race.status === "completed";
-  const isPast = isCompleted || race.date < new Date();
+  const isCompleted = match.status === "completed";
+  const isPast = isCompleted || match.scheduledAt < new Date();
+  const hasScore = isCompleted && match.homeScore !== null && match.awayScore !== null;
 
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
       {/* Match header */}
       <div className="glass-card">
         <div className="flex flex-wrap gap-2 mb-3">
-          <span className={`badge ${disciplineColor(race.discipline)}`}>{race.discipline}</span>
-          <span className={`badge ${genderColor(race.gender)}`}>
-            {genderLabel(race.gender)}
-          </span>
+          <span className={`badge ${stageColor(match.stage)}`}>{stageLabel(match.stage)}</span>
+          {match.group && <span className="badge badge-gray">Grupp {match.group}</span>}
           {isCompleted && <span className="badge badge-green">Avslutad</span>}
           {!isCompleted && isPast && <span className="badge badge-gray">Passerad</span>}
           {!isPast && <span className="badge badge-blue">Kommande</span>}
         </div>
-        <h1 className="text-2xl font-bold text-white">{race.name}</h1>
-        <p className="text-white/50 mt-1">
-          {format(race.date)} · {race.venue}, {race.country}
+
+        {/* Teams vs display */}
+        <div className="flex items-center justify-between gap-4 mt-4">
+          <div className="flex-1 text-right">
+            <p className="text-xl font-bold text-white">{match.homeTeam.name}</p>
+            <p className="text-xs text-white/40 mt-0.5">Hemmalag</p>
+          </div>
+          <div className="text-center shrink-0">
+            {hasScore ? (
+              <p className="text-3xl font-black text-white tabular-nums">
+                {match.homeScore} – {match.awayScore}
+              </p>
+            ) : (
+              <p className="text-2xl font-black text-white/30">vs</p>
+            )}
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-xl font-bold text-white">{match.awayTeam.name}</p>
+            <p className="text-xs text-white/40 mt-0.5">Bortalag</p>
+          </div>
+        </div>
+
+        <p className="text-white/40 text-sm text-center mt-4">
+          {formatWithTime(match.scheduledAt)} · {match.venue}, {match.city}
         </p>
       </div>
 
-      {/* Officiellt resultat */}
-      {podium && (
+      {/* Official result */}
+      {hasScore && (
         <div className="glass-card">
           <h2 className="font-bold text-white mb-4">Officiellt resultat</h2>
-          <ResultsPodium results={race.results.slice(0, 10)} />
+          <MatchResult
+            homeTeam={match.homeTeam}
+            awayTeam={match.awayTeam}
+            homeScore={match.homeScore!}
+            awayScore={match.awayScore!}
+          />
         </div>
       )}
 
-      {/* Tipssektion */}
+      {/* Prediction section */}
       {memberships.length === 0 ? (
         <div className="glass-card text-center py-8">
           <p className="text-white/50 mb-3">Gå med i eller skapa en grupp för att tippa.</p>
@@ -94,16 +93,19 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
         </div>
       ) : (
         <PredictionForm
-          race={{ id: race.id, name: race.name, status: race.status }}
+          match={{
+            id: match.id,
+            homeTeam: { id: match.homeTeam.id, name: match.homeTeam.name },
+            awayTeam: { id: match.awayTeam.id, name: match.awayTeam.name },
+            status: match.status,
+          }}
           groups={memberships.map((m) => m.group)}
           existingPredictions={existingPredictions.map((p) => ({
             groupId: p.groupId,
-            first: p.first,
-            second: p.second,
-            third: p.third,
+            predictedHome: p.predictedHome,
+            predictedAway: p.predictedAway,
             score: p.score,
           }))}
-          athletePool={athletePool}
           locked={isPast}
         />
       )}

@@ -7,19 +7,23 @@ export async function POST(request: Request) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
-  const { raceId, groupId, first, second, third } = body;
+  const { matchId, groupId, predictedHome, predictedAway } = body;
 
-  if (!raceId || !groupId || !first || !second || !third) {
+  if (!matchId || !groupId || predictedHome === undefined || predictedAway === undefined) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
-  if (first === second || first === third || second === third) {
-    return NextResponse.json({ error: "Each podium position must be a different athlete" }, { status: 400 });
+
+  const home = Number(predictedHome);
+  const away = Number(predictedAway);
+
+  if (!Number.isInteger(home) || !Number.isInteger(away) || home < 0 || away < 0 || home > 99 || away > 99) {
+    return NextResponse.json({ error: "Score must be a whole number between 0 and 99" }, { status: 400 });
   }
 
-  const race = await prisma.race.findUnique({ where: { id: raceId } });
-  if (!race) return NextResponse.json({ error: "Race not found" }, { status: 404 });
-  if (race.status === "completed") {
-    return NextResponse.json({ error: "Predictions are closed — race has finished" }, { status: 403 });
+  const match = await prisma.match.findUnique({ where: { id: matchId } });
+  if (!match) return NextResponse.json({ error: "Match not found" }, { status: 404 });
+  if (match.status === "completed") {
+    return NextResponse.json({ error: "Predictions are closed — match has finished" }, { status: 403 });
   }
 
   const membership = await prisma.groupMembership.findUnique({
@@ -30,9 +34,9 @@ export async function POST(request: Request) {
   }
 
   const prediction = await prisma.prediction.upsert({
-    where: { userId_raceId_groupId: { userId: session.user.id, raceId, groupId } },
-    update: { first, second, third, score: null },
-    create: { userId: session.user.id, raceId, groupId, first, second, third },
+    where: { userId_matchId_groupId: { userId: session.user.id, matchId, groupId } },
+    update: { predictedHome: home, predictedAway: away, score: null },
+    create: { userId: session.user.id, matchId, groupId, predictedHome: home, predictedAway: away },
   });
 
   return NextResponse.json(prediction);
