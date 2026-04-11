@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // Mirrors Supabase auth.users — created on first sign-in via a trigger or API route
@@ -16,18 +15,14 @@ model Profile {
 }
 
 model Race {
-  id          String   @id // "fis-{fisRaceId}", e.g. "fis-215400"
-  name        String   // e.g. "Women Sprint Classic - Ruka"
-  venue       String   // e.g. "Ruka"
-  country     String   // e.g. "FIN"
+  id          String   @id
+  name        String
+  venue       String
+  country     String
   date        DateTime
-  discipline  String   // e.g. "Sprint", "10km", "Skiathlon", "Pursuit", "Mass Start"
-  technique   String   @default("") // "Classic", "Free", "Skiathlon"
+  discipline  String   // e.g. "Group Stage", "Quarter-Final", "Semi-Final", "Final"
   gender      String   // "M" or "W"
-  season      String   // e.g. "2025-2026"
   status      String   @default("upcoming") // "upcoming" | "completed"
-  fisRaceId   String   @default("") // FIS race ID used to sync results
-  eventId     String   @default("") // FIS event ID (groups races from the same weekend)
   results     Result[]
   predictions Prediction[]
   createdAt   DateTime @default(now())
@@ -35,11 +30,10 @@ model Race {
 }
 
 model Athlete {
-  id         String   @id // FIS competitor ID
+  id         String   @id
   name       String
   nationCode String
-  gender     String?  // "M" or "W", set when seeded from a gender-specific race
-  wcPoints   Int      @default(0) // Current season overall WC standings points
+  gender     String?  // "M" or "W"
   results    Result[]
 }
 
@@ -82,9 +76,9 @@ model Prediction {
   userId    String   // Supabase user ID
   raceId    String
   groupId   String
-  first     String   // FIS athlete ID
-  second    String   // FIS athlete ID
-  third     String   // FIS athlete ID
+  first     String   // athlete/team ID
+  second    String   // athlete/team ID
+  third     String   // athlete/team ID
   score     Int?     // null until race is completed and scored
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

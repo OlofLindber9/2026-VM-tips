@@ -8,7 +8,7 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser();
   const userId = user!.id;
   const displayName =
-    (user!.user_metadata?.username as string) || user!.email?.split("@")[0] || "Skier";
+    (user!.user_metadata?.username as string) || user!.email?.split("@")[0] || "Player";
 
   // Upcoming races
   const upcomingRaces = await prisma.race.findMany({
@@ -44,7 +44,7 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-bold text-white">
           Welcome back, {displayName}!
         </h1>
-        <p className="text-white/50 mt-1">Here is your season overview.</p>
+        <p className="text-white/50 mt-1">Here is your overview.</p>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -52,7 +52,7 @@ export default async function DashboardPage() {
         <div className="glass-card col-span-full lg:col-span-2">
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-bold text-white">Upcoming races</h2>
-            <Link href="/races" className="text-sm text-ski-ice hover:text-white transition-colors">
+            <Link href="/races" className="text-sm text-app-ice hover:text-white transition-colors">
               View all →
             </Link>
           </div>
@@ -85,7 +85,7 @@ export default async function DashboardPage() {
         <div className="glass-card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-bold text-white">My groups</h2>
-            <Link href="/groups" className="text-sm text-ski-ice hover:text-white transition-colors">
+            <Link href="/groups" className="text-sm text-app-ice hover:text-white transition-colors">
               View all →
             </Link>
           </div>
@@ -123,7 +123,7 @@ export default async function DashboardPage() {
             {recentPredictions.map((p) => (
               <div key={p.id} className="flex items-center justify-between text-sm">
                 <span className="text-white/70">{p.race.name}</span>
-                <span className="font-bold text-ski-accent">{p.score} pts</span>
+                <span className="font-bold text-app-accent">{p.score} pts</span>
               </div>
             ))}
           </div>

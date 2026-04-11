@@ -15,7 +15,7 @@ export default async function AppLayout({
   if (!user) redirect("/login");
 
   const displayName =
-    (user.user_metadata?.username as string) || user.email?.split("@")[0] || "Skier";
+    (user.user_metadata?.username as string) || user.email?.split("@")[0] || "Player";
 
   return (
     <div
@@ -24,20 +24,7 @@ export default async function AppLayout({
         background: "linear-gradient(160deg, #050e1a 0%, #0d1f35 45%, #1a3a5c 100%)",
       }}
     >
-      {/* Athlete background image */}
-      <div
-        className="fixed inset-0 pointer-events-none mix-blend-luminosity"
-        style={{
-          backgroundImage: "url('/images/Ebba.webp')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-          opacity: 0.25,
-          zIndex: 0,
-        }}
-      />
-
-      {/* Dark gradient overlay — keeps content readable */}
+      {/* Dark gradient overlay */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{

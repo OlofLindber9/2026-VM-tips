@@ -22,9 +22,9 @@ export default function NavBar({ user }: NavBarProps) {
   }
 
   const links = [
-    { href: "/dashboard", label: "Dashboard", icon: "🏠︎" },
-    { href: "/races", label: "Races", icon: "🏁" },
-    { href: "/groups", label: "My Groups", icon: "𖨆𖨆" },
+    { href: "/dashboard", label: "Dashboard", icon: "🏠" },
+    { href: "/races", label: "Events", icon: "🏁" },
+    { href: "/groups", label: "My Groups", icon: "👥" },
   ];
 
   return (
@@ -52,9 +52,9 @@ export default function NavBar({ user }: NavBarProps) {
           className="flex items-center gap-2 font-black text-lg tracking-tight"
           style={{ fontFamily: "var(--font-barlow), 'Barlow Condensed', sans-serif" }}
         >
-          <span className="text-xl">⛷️</span>
+          <span className="text-xl">🏆</span>
           <span className="hidden sm:inline">
-            <span className="text-ski-accent">Ski</span>
+            <span className="text-app-accent">VM</span>
             <span className="text-white"> Predictor</span>
           </span>
         </Link>
@@ -105,8 +105,8 @@ export default function NavBar({ user }: NavBarProps) {
           </div>
 
           <a
-            href="mailto:ololin0725@gmail.com?subject=Ski%20Predictor%20Feedback"
-            className="hidden sm:inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-ski-accent transition-colors font-medium border border-white/15 px-3 py-1 rounded-lg hover:border-ski-accent/50"
+            href="mailto:ololin0725@gmail.com?subject=VM%20Predictor%20Feedback"
+            className="hidden sm:inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-app-accent transition-colors font-medium border border-white/15 px-3 py-1 rounded-lg hover:border-app-accent/50"
           >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -171,8 +171,8 @@ export default function NavBar({ user }: NavBarProps) {
             <span className="text-white/35 text-xs">{user.displayName}</span>
             <div className="flex items-center gap-3">
               <a
-                href="mailto:ololin0725@gmail.com?subject=Ski%20Predictor%20Feedback"
-                className="text-xs text-white/35 hover:text-ski-accent transition-colors"
+                href="mailto:ololin0725@gmail.com?subject=VM%20Predictor%20Feedback"
+                className="text-xs text-white/35 hover:text-app-accent transition-colors"
               >
                 Feedback
               </a>

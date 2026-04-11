@@ -12,21 +12,6 @@ export default async function Home() {
 
   return (
     <main className="page-dark relative overflow-hidden">
-      {/*
-       * Hero background image — drop a photo of a ski athlete at:
-       *   public/images/hero-bg.jpg
-       * The gradient overlay keeps text readable regardless of the image.
-       */}
-      <div 
-        className="absolute inset-0 z-0 opacity-25 mix-blend-luminosity"
-        style={{
-          backgroundImage: "url('/images/Frida.jpg')",
-          backgroundSize: "cover",
-          backgroundPosition: "40% center", // Shifts image slightly left
-          backgroundRepeat: "no-repeat"
-        }}
-      />
-
       {/* Gradient overlay */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -49,7 +34,7 @@ export default async function Home() {
         {/* Top nav strip */}
         <div className="flex justify-between items-center max-w-5xl mx-auto w-full py-5">
           <span className="text-white/60 font-bold tracking-widest text-xs uppercase">
-            &nbsp;&nbsp;FIS Cross-Country
+            &nbsp;&nbsp;VM 2026
           </span>
           <div className="flex items-center gap-4">
             <Link
@@ -71,10 +56,10 @@ export default async function Home() {
         <div className="flex-1 flex flex-col items-center justify-center text-center max-w-3xl mx-auto w-full pb-12">
           {/* Season chip */}
           <div
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-ski-accent/40 text-ski-accent text-xs font-bold tracking-widest uppercase mb-8 animate-slide-down"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-app-accent/40 text-app-accent text-xs font-bold tracking-widest uppercase mb-8 animate-slide-down"
             style={{ background: "rgba(232,160,32,0.1)" }}
           >
-            &nbsp;&nbsp;2025 / 26 World Cup Season
+            &nbsp;&nbsp;World Cup 2026
           </div>
 
           {/* Title */}
@@ -87,24 +72,24 @@ export default async function Home() {
               letterSpacing: "-0.025em",
             }}
           >
-            <span className="gradient-text-light">Ski</span>
+            <span className="gradient-text-light">VM</span>
             <br />
             Predictor
           </h1>
 
           {/* Subtitle */}
           <p
-            className="text-ski-ice/75 text-lg sm:text-xl max-w-lg mx-auto mb-10 anim-ready animate-slide-up"
+            className="text-app-ice/75 text-lg sm:text-xl max-w-lg mx-auto mb-10 anim-ready animate-slide-up"
           >
-            Challenge your friends. Predict the podiums. Conquer the{" "}
-            <span className="text-ski-accent font-semibold">FIS World Cup</span> season.
+            Challenge your friends. Predict the results. Conquer the{" "}
+            <span className="text-app-accent font-semibold">World Cup 2026</span>.
           </p>
 
           {/* CTA buttons */}
           <div className="flex flex-wrap gap-4 justify-center anim-ready animate-slide-up-1">
             <Link
               href="/signup"
-              className="inline-flex items-center gap-2 font-bold px-8 py-3.5 rounded-2xl text-ski-midnight text-base shadow-2xl transition-all duration-200 hover:-translate-y-1 animate-pulse-gold"
+              className="inline-flex items-center gap-2 font-bold px-8 py-3.5 rounded-2xl text-app-midnight text-base shadow-2xl transition-all duration-200 hover:-translate-y-1 animate-pulse-gold"
               style={{
                 background: "linear-gradient(135deg, #f5c842, #e8a020)",
                 fontFamily: "var(--font-barlow), sans-serif",
@@ -119,14 +104,12 @@ export default async function Home() {
           </div>
         </div>
 
-        
-
         {/* Footer */}
         <div className="border-t border-white/10 py-4 text-center text-white/25 text-xs flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
-          <span>Powered by FIS official data &middot; Not affiliated with FIS</span>
+          <span>VM Predictor 2026</span>
           <a
-            href="mailto:ololin0725@gmail.com?subject=Ski%20Predictor%20Feedback"
-            className="text-white/35 hover:text-ski-accent transition-colors"
+            href="mailto:ololin0725@gmail.com?subject=VM%20Predictor%20Feedback"
+            className="text-white/35 hover:text-app-accent transition-colors"
           >
             Got any feedback? →
           </a>

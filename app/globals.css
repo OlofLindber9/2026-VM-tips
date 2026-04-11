@@ -4,17 +4,17 @@
 
 @layer base {
   :root {
-    --ski-blue: #1a3a5c;
-    --ski-light: #2d6a9f;
-    --ski-snow: #f0f4f8;
-    --ski-accent: #e8a020;
-    --ski-midnight: #050e1a;
-    --ski-deep: #0d1f35;
-    --ski-ice: #a8d4f0;
+    --app-blue: #1a3a5c;
+    --app-light: #2d6a9f;
+    --app-snow: #f0f4f8;
+    --app-accent: #e8a020;
+    --app-midnight: #050e1a;
+    --app-deep: #0d1f35;
+    --app-ice: #a8d4f0;
   }
 
   body {
-    @apply bg-ski-snow text-gray-900;
+    @apply bg-app-snow text-gray-900;
   }
 
   /* Display headings use Barlow Condensed */
@@ -28,16 +28,16 @@
 /* ─── Buttons ───────────────────────────────────────────────────── */
 @layer components {
   .btn-primary {
-    @apply bg-ski-blue text-white font-bold px-6 py-2.5 rounded-xl
-           hover:bg-ski-light transition-all duration-200
+    @apply bg-app-blue text-white font-bold px-6 py-2.5 rounded-xl
+           hover:bg-app-light transition-all duration-200
            disabled:opacity-50 disabled:cursor-not-allowed
            shadow-md hover:shadow-lg hover:shadow-blue-900/25
            transform hover:-translate-y-0.5 active:translate-y-0;
   }
 
   .btn-secondary {
-    @apply bg-white text-ski-blue font-bold px-6 py-2.5 rounded-xl
-           border border-ski-blue/25 hover:bg-sky-50
+    @apply bg-white text-app-blue font-bold px-6 py-2.5 rounded-xl
+           border border-app-blue/25 hover:bg-sky-50
            transition-all duration-200 shadow-sm hover:shadow-md;
   }
 
@@ -112,13 +112,13 @@
   /* ─── Inputs ──────────────────────────────────────────────────── */
   .input-field {
     @apply w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm
-           focus:outline-none focus:ring-2 focus:ring-ski-light/50 focus:border-ski-light
+           focus:outline-none focus:ring-2 focus:ring-app-light/50 focus:border-app-light
            bg-white transition-all duration-150 placeholder:text-gray-400;
   }
 
   .input-dark {
     @apply w-full rounded-xl px-4 py-2.5 text-sm text-white
-           focus:outline-none focus:ring-2 focus:ring-ski-accent/60
+           focus:outline-none focus:ring-2 focus:ring-app-accent/60
            transition-all duration-150 placeholder:text-white/40;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -126,7 +126,7 @@
 
   .select-dark {
     @apply w-full rounded-xl px-4 py-2.5 text-sm text-white
-           focus:outline-none focus:ring-2 focus:ring-ski-accent/60
+           focus:outline-none focus:ring-2 focus:ring-app-accent/60
            transition-all duration-150
            disabled:opacity-50 disabled:cursor-not-allowed;
     background: rgba(255, 255, 255, 0.08);
@@ -152,26 +152,6 @@
   min-height: 100vh;
   position: relative;
   overflow: hidden;
-}
-
-/* ─── Hero background — place athlete image at /public/images/hero-bg.jpg ── */
-.hero-bg-image {
-  position: absolute;
-  inset: 0;
-  background-image: url("/images/hero-bg.jpg");
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
-}
-
-/* ─── Speed lines decoration ─────────────────────────────────────── */
-.speed-line {
-  position: absolute;
-  height: 1px;
-  left: -20%;
-  pointer-events: none;
-  background: linear-gradient(90deg, transparent, rgba(168, 212, 240, 0.5), transparent);
-  animation: speedLine 2.8s ease-in-out infinite;
 }
 
 /* ─── Staggered animation opacity start ───────────────────────────── */

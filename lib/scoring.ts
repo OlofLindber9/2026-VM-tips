@@ -4,11 +4,11 @@
  *   +1 pt  — predicted 2nd place finished anywhere on the podium (top 3)
  *   +1 pt  — predicted 3rd place finished anywhere on the podium (top 3)
  *
- * Maximum score per race: 5 pts
+ * Maximum score per event: 5 pts
  */
 
 export interface PodiumActual {
-  first: string;   // athlete ID
+  first: string;   // participant ID
   second: string;
   third: string;
 }

@@ -2,31 +2,15 @@ import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { revalidatePath } from "next/cache";
-import { format, disciplineColor, techniqueColor, genderLabel, genderColor } from "@/lib/utils";
+import { format, disciplineColor, genderLabel, genderColor } from "@/lib/utils";
 import PredictionForm from "@/components/PredictionForm";
 import ResultsPodium from "@/components/ResultsPodium";
-import { fetchAthletePool } from "@/lib/fis/fetcher";
-import { syncRaceResults, currentSeasonCode } from "@/lib/fis/sync";
 
 export default async function RacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const userId = user!.id;
-
-  // Server action: sync results for this specific race on demand.
-  // Not called automatically — the page always loads from DB first.
-  async function syncRaceAction() {
-    "use server";
-    const meta = await prisma.race.findUnique({
-      where: { id },
-      select: { fisRaceId: true },
-    });
-    if (!meta?.fisRaceId) return;
-    await syncRaceResults(id, meta.fisRaceId).catch(() => {});
-    revalidatePath(`/races/${id}`);
-  }
 
   const race = await prisma.race.findUnique({
     where: { id },
@@ -50,9 +34,8 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
     include: { race: { select: { name: true } } },
   });
 
-  // Athlete pool: use race results if completed (sorted by rank), otherwise
-  // use WC standings stored in DB (synced after each race). Falls back to a
-  // live FIS fetch only on cold start before any standings have been synced.
+  // Athlete pool: use race results if completed (sorted by rank),
+  // otherwise use all athletes from the DB for this gender.
   let athletePool: { id: string; name: string; nationCode: string }[] = [];
 
   if (race.results.length > 0) {
@@ -64,11 +47,9 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
   } else {
     const athletes = await prisma.athlete.findMany({
       where: { gender: race.gender },
-      orderBy: [{ wcPoints: "desc" }, { name: "asc" }],
+      orderBy: { name: "asc" },
     });
-    athletePool = athletes.length > 0
-      ? athletes
-      : await fetchAthletePool(race.gender, currentSeasonCode());
+    athletePool = athletes;
   }
 
   const podium =
@@ -78,17 +59,13 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
 
   const isCompleted = race.status === "completed";
   const isPast = isCompleted || race.date < new Date();
-  const canSyncResults = isPast && !isCompleted && !!race.fisRaceId;
 
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
-      {/* Race header */}
+      {/* Event header */}
       <div className="glass-card">
         <div className="flex flex-wrap gap-2 mb-3">
           <span className={`badge ${disciplineColor(race.discipline)}`}>{race.discipline}</span>
-          {race.technique && race.technique !== "Skiathlon" && (
-            <span className={`badge ${techniqueColor(race.technique)}`}>{race.technique}</span>
-          )}
           <span className={`badge ${genderColor(race.gender)}`}>
             {genderLabel(race.gender)}
           </span>
@@ -100,15 +77,6 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
         <p className="text-white/50 mt-1">
           {format(race.date)} · {race.venue}, {race.country}
         </p>
-
-        {/* Load results button — shown for past races not yet synced */}
-        {canSyncResults && (
-          <form action={syncRaceAction} className="mt-4">
-            <button type="submit" className="btn-secondary text-sm">
-              Load results
-            </button>
-          </form>
-        )}
       </div>
 
       {/* Official results */}
