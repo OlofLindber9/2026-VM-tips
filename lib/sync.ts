@@ -155,12 +155,19 @@ export async function syncMatches(): Promise<SyncResult> {
     const newAway = fixture.goals.away;
     const newMinute = isLive(status) ? minuteLabel(status) : null;
 
+    // Determine knockout winner for non-group matches completing now
+    let newKnockoutWinner: string | null = null;
+    if (newStatus === "completed" && dbMatch.stage !== "group") {
+      newKnockoutWinner = resolveKnockoutWinner(fixture);
+    }
+
     // Skip if nothing changed
     if (
       dbMatch.status === newStatus &&
       dbMatch.homeScore === newHome &&
       dbMatch.awayScore === newAway &&
-      dbMatch.minute === newMinute
+      dbMatch.minute === newMinute &&
+      dbMatch.knockoutWinner === newKnockoutWinner
     ) {
       continue;
     }
@@ -172,6 +179,7 @@ export async function syncMatches(): Promise<SyncResult> {
         homeScore: newHome,
         awayScore: newAway,
         minute: newMinute,
+        knockoutWinner: newKnockoutWinner,
       },
     });
 
@@ -180,7 +188,13 @@ export async function syncMatches(): Promise<SyncResult> {
 
     // Score predictions when match transitions to completed
     if (newStatus === "completed" && !wasCompleted && newHome !== null && newAway !== null) {
-      const scored = await scorePredictions(dbMatch.id, newHome, newAway);
+      const scored = await scorePredictions(
+        dbMatch.id,
+        dbMatch.stage,
+        newHome,
+        newAway,
+        newKnockoutWinner
+      );
       result.predictionsScored += scored;
     }
   }
@@ -194,8 +208,10 @@ export async function syncMatches(): Promise<SyncResult> {
 
 async function scorePredictions(
   matchId: string,
+  stage: string,
   homeScore: number,
-  awayScore: number
+  awayScore: number,
+  knockoutWinner: string | null
 ): Promise<number> {
   const predictions = await prisma.prediction.findMany({
     where: { matchId, score: null },
@@ -203,10 +219,13 @@ async function scorePredictions(
 
   for (const prediction of predictions) {
     const pts = calculateScore(
+      stage,
       prediction.predictedHome,
       prediction.predictedAway,
+      prediction.predictedWinner,
       homeScore,
-      awayScore
+      awayScore,
+      knockoutWinner
     );
     await prisma.prediction.update({
       where: { id: prediction.id },
@@ -220,6 +239,33 @@ async function scorePredictions(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Determine the winner of a knockout match from an API-Football fixture.
+ *
+ * - If one team scored more goals (regular time or AET): that side wins.
+ * - If status is "PEN" and goals are level: the side with more penalty goals wins.
+ * Returns null if the winner cannot be determined (shouldn't happen in a completed knockout).
+ */
+function resolveKnockoutWinner(fixture: AFFixture): string | null {
+  const homeGoals = fixture.goals.home ?? 0;
+  const awayGoals = fixture.goals.away ?? 0;
+
+  if (homeGoals > awayGoals) return "home";
+  if (awayGoals > homeGoals) return "away";
+
+  // Scores level — check penalty shootout
+  const homePen = fixture.score?.penalty?.home ?? null;
+  const awayPen = fixture.score?.penalty?.away ?? null;
+
+  if (homePen !== null && awayPen !== null) {
+    if (homePen > awayPen) return "home";
+    if (awayPen > homePen) return "away";
+  }
+
+  console.warn("  ⚠ Could not determine knockout winner for fixture", fixture.fixture.id);
+  return null;
+}
 
 function shiftDate(dateStr: string, days: number): string {
   const d = new Date(dateStr);

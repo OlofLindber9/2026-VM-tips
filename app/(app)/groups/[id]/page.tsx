@@ -7,7 +7,7 @@ import { format, teamFlag } from "@/lib/utils";
 export default async function GroupPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await auth();
-  const userId = session!.user.id;
+  const userId = session!.user!.id as string;
 
   const group = await prisma.group.findUnique({
     where: { id },
@@ -33,8 +33,9 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
   type PredEntry = {
     match: (typeof predictions)[number]["match"];
     score: number | null;
-    predictedHome: number;
-    predictedAway: number;
+    predictedHome: number | null;
+    predictedAway: number | null;
+    predictedWinner: string | null;
   };
   const predictionsByUser: Record<string, PredEntry[]> = {};
 
@@ -46,6 +47,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
       score: pred.score,
       predictedHome: pred.predictedHome,
       predictedAway: pred.predictedAway,
+      predictedWinner: pred.predictedWinner,
     });
   }
 
@@ -175,7 +177,13 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
                   </div>
                   {myPrediction ? (
                     <span className="text-sm font-black tabular-nums text-app-ice shrink-0">
-                      {myPrediction.predictedHome}–{myPrediction.predictedAway}
+                      {myPrediction.predictedHome !== null && myPrediction.predictedAway !== null
+                        ? `${myPrediction.predictedHome}–${myPrediction.predictedAway}`
+                        : myPrediction.predictedWinner === "home"
+                        ? m.homeTeam.name
+                        : myPrediction.predictedWinner === "away"
+                        ? m.awayTeam.name
+                        : "–"}
                     </span>
                   ) : (
                     <span className="text-[11px] font-bold tracking-[0.1em] uppercase text-app-accent/70 shrink-0">Tippa →</span>

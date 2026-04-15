@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export default async function GroupsPage() {
   const session = await auth();
-  const userId = session!.user.id;
+  const userId = session!.user!.id as string;
 
   const memberships = await prisma.groupMembership.findMany({
     where: { userId },

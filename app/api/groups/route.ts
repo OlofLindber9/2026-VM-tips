@@ -12,7 +12,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const memberships = await prisma.groupMembership.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.user!.id as string },
     include: {
       group: {
         include: { _count: { select: { members: true } } },
@@ -38,9 +38,9 @@ export async function POST(request: Request) {
     data: {
       name,
       inviteCode: generateInviteCode(),
-      createdBy: session.user.id,
+      createdBy: session.user!.id as string,
       members: {
-        create: { userId: session.user.id },
+        create: { userId: session.user!.id as string },
       },
     },
   });

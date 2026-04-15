@@ -10,7 +10,7 @@ import LiveRefresh from "@/components/LiveRefresh";
 export default async function MatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await auth();
-  const userId = session!.user.id;
+  const userId = session!.user!.id as string;
 
   const match = await prisma.match.findUnique({
     where: { id },
@@ -32,6 +32,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
   const isCompleted = match.status === "completed";
   const isPast = isCompleted || isLive || match.scheduledAt < new Date();
   const hasScore = (isLive || isCompleted) && match.homeScore !== null && match.awayScore !== null;
+  const isKnockout = match.stage !== "group";
 
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
@@ -90,6 +91,18 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
 
+        {/* Knockout winner badge */}
+        {isCompleted && isKnockout && match.knockoutWinner && (
+          <div className="mt-4 text-center">
+            <span
+              className="inline-block px-3 py-1 rounded-full text-xs font-bold"
+              style={{ background: "rgba(52,211,153,0.15)", color: "rgb(110,231,183)" }}
+            >
+              Vinnare: {match.knockoutWinner === "home" ? match.homeTeam.name : match.awayTeam.name}
+            </span>
+          </div>
+        )}
+
         <p className="text-white/40 text-sm text-center mt-4">
           {formatWithTime(match.scheduledAt)} · {match.venue}, {match.city}
         </p>
@@ -124,17 +137,20 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
             homeTeam: { id: match.homeTeam.id, name: match.homeTeam.name },
             awayTeam: { id: match.awayTeam.id, name: match.awayTeam.name },
             status: match.status,
+            stage: match.stage,
           }}
           groups={memberships.map((m) => m.group)}
           existingPredictions={existingPredictions.map((p) => ({
             groupId: p.groupId,
             predictedHome: p.predictedHome,
             predictedAway: p.predictedAway,
+            predictedWinner: p.predictedWinner,
             score: p.score,
           }))}
           locked={isLive || isPast}
         />
       )}
+
     </div>
   );
 }

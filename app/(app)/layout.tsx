@@ -44,7 +44,7 @@ export default async function AppLayout({
         }}
       />
 
-      <NavBar user={{ email: session.user?.email!, displayName }} />
+      <NavBar user={{ email: session.user?.email ?? "", displayName }} />
 
       <main className="relative z-10 flex-1 max-w-5xl mx-auto w-full px-4 py-8">
         {children}

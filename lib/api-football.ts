@@ -47,6 +47,14 @@ export type AFFixture = {
     home: number | null;
     away: number | null;
   };
+  /** Detailed score breakdown — only present on completed matches */
+  score?: {
+    halftime?: { home: number | null; away: number | null };
+    fulltime?: { home: number | null; away: number | null };
+    extratime?: { home: number | null; away: number | null };
+    /** Penalty shootout goals (NOT total goals including match — pure penalty count) */
+    penalty?: { home: number | null; away: number | null };
+  };
 };
 
 type AFResponse<T> = {

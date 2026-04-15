@@ -21,15 +21,49 @@ export default async function RacesPage() {
   const upcoming = matches.filter((m) => m.status === "upcoming" && m.scheduledAt >= now);
   const past = matches.filter((m) => m.status === "completed" || (m.status === "upcoming" && m.scheduledAt < now));
 
+  const hasKnockout = matches.some((m) => m.stage !== "group");
+
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold text-white">VM 2026 — Matcher</h1>
+      <div className="flex items-start justify-between gap-4">
+        <h1 className="text-2xl font-bold text-white">VM 2026 — Matcher</h1>
+      </div>
 
       {matches.length === 0 && (
         <div className="glass-card text-center py-12">
           <div className="text-4xl mb-3">📅</div>
           <p className="text-white/50 mb-2">Inga matcher tillagda ännu.</p>
           <p className="text-sm text-white/40">Matcher visas här när de läggs till.</p>
+        </div>
+      )}
+
+      {/* Knockout tip deadline notice — shown when knockout matches exist but haven't started */}
+      {hasKnockout && upcoming.some((m) => m.stage !== "group") && (
+        <div
+          className="rounded-xl px-4 py-3 flex items-start gap-3 text-sm"
+          style={{ background: "rgba(245,200,66,0.08)", border: "1px solid rgba(245,200,66,0.2)" }}
+        >
+          <span className="text-lg shrink-0">⚠️</span>
+          <p className="text-white/70">
+            <strong className="text-app-gold">Slutspelet börjar snart!</strong>{" "}
+            Lämna in dina slutspelstips innan den första slutspelsmatchen startar.
+            I slutspelet tippar du bara vem som vinner — inga mål.
+          </p>
+        </div>
+      )}
+
+      {/* Group stage deadline notice — shown when all upcoming matches are group stage */}
+      {!hasKnockout && upcoming.length > 0 && (
+        <div
+          className="rounded-xl px-4 py-3 flex items-start gap-3 text-sm"
+          style={{ background: "rgba(184,240,200,0.06)", border: "1px solid rgba(184,240,200,0.15)" }}
+        >
+          <span className="text-lg shrink-0">💡</span>
+          <p className="text-white/60">
+            Tippa alla 72 gruppspelets matcher innan VM börjar.
+            Du tjänar <strong className="text-app-ice">3 poäng</strong> på exakt rätt resultat och{" "}
+            <strong className="text-app-ice">1 poäng</strong> på rätt utfall.
+          </p>
         </div>
       )}
 
@@ -68,6 +102,7 @@ export default async function RacesPage() {
           </div>
         </section>
       )}
+
     </div>
   );
 }
@@ -86,6 +121,7 @@ type MatchCardMatch = {
   homeScore: number | null;
   awayScore: number | null;
   minute: string | null;
+  knockoutWinner: string | null;
   _count: { predictions: number };
 };
 
@@ -96,9 +132,14 @@ function MatchCard({ match }: { match: MatchCardMatch }) {
   const isPast = isCompleted || match.scheduledAt < new Date();
   const hasScore = (isLive || isCompleted) && match.homeScore !== null && match.awayScore !== null;
   const result = hasScore ? getResult(match.homeScore!, match.awayScore!) : null;
+  const isKnockout = match.stage !== "group";
 
-  const homeWon = result === "home";
-  const awayWon = result === "away";
+  const homeWon = isKnockout
+    ? match.knockoutWinner === "home"
+    : result === "home";
+  const awayWon = isKnockout
+    ? match.knockoutWinner === "away"
+    : result === "away";
 
   return (
     <Link
@@ -119,11 +160,18 @@ function MatchCard({ match }: { match: MatchCardMatch }) {
           <span className={`badge ${stageColor(match.stage)}`}>{stageLabel(match.stage)}</span>
         )}
 
-        {/* LIVE indicator — only shown when the match is live */}
+        {/* LIVE indicator */}
         {isLive && (
           <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.1em] uppercase text-red-400">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
             Live {match.minute && `· ${match.minute}'`}
+          </span>
+        )}
+
+        {/* Knockout tip hint */}
+        {isKnockout && !isLive && !isCompleted && (
+          <span className="text-[10px] font-bold tracking-widest uppercase text-app-gold/60">
+            Tippa vinnare
           </span>
         )}
       </div>
@@ -138,7 +186,7 @@ function MatchCard({ match }: { match: MatchCardMatch }) {
           <span className="not-italic">{teamFlag(match.homeTeam.id)}</span>
         </span>
 
-        {/* Score / time */}
+        {/* Score / vs */}
         {hasScore ? (
           <span
             className="shrink-0 text-xl font-black tabular-nums px-3 py-1 rounded-lg"
@@ -166,6 +214,18 @@ function MatchCard({ match }: { match: MatchCardMatch }) {
           {match.awayTeam.name}
         </span>
       </div>
+
+      {/* Knockout winner badge */}
+      {isCompleted && isKnockout && match.knockoutWinner && (
+        <div className="mt-2 text-center">
+          <span
+            className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full"
+            style={{ background: "rgba(52,211,153,0.12)", color: "rgb(110,231,183)" }}
+          >
+            {match.knockoutWinner === "home" ? match.homeTeam.name : match.awayTeam.name} vinner
+          </span>
+        </div>
+      )}
 
       <div className="text-xs text-white/35 mt-2 text-center">
         {format(match.scheduledAt)} · {match.city} · {match._count.predictions} tippningar
