@@ -1,0 +1,4 @@
+Sign up at api-football.com and get your free API key
+Add to .env: API_FOOTBALL_KEY=xxx and SYNC_SECRET=<random string>
+Set up a cron job to POST /api/sync/matches — use cron-job.org (free) or Vercel Cron
+Set cron to every 60s on match days, every 5 min otherwise

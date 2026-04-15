@@ -35,10 +35,12 @@ model Match {
   country     String   // "USA" | "Canada" | "Mexico"
   stage       String   // "group" | "r32" | "r16" | "qf" | "sf" | "3p" | "final"
   group       String?  // "A"–"L" for group stage; null for knockouts
-  matchNumber Int?     // official FIFA match number
-  status      String   @default("upcoming") // "upcoming" | "completed"
-  homeScore   Int?     // null until played
-  awayScore   Int?     // null until played
+  matchNumber    Int?     // official FIFA match number
+  status         String   @default("upcoming") // "upcoming" | "live" | "completed"
+  homeScore      Int?     // null until played
+  awayScore      Int?     // null until played
+  minute         String?  // current match minute, e.g. "45+2" — only set when live
+  apiFootballId  Int?     @unique // fixture id from api-football.com for syncing
   predictions Prediction[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

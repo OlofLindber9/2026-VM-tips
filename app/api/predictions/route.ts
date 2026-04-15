@@ -22,8 +22,8 @@ export async function POST(request: Request) {
 
   const match = await prisma.match.findUnique({ where: { id: matchId } });
   if (!match) return NextResponse.json({ error: "Match not found" }, { status: 404 });
-  if (match.status === "completed") {
-    return NextResponse.json({ error: "Predictions are closed — match has finished" }, { status: 403 });
+  if (match.status === "live" || match.status === "completed") {
+    return NextResponse.json({ error: "Predictions are closed — match has started" }, { status: 403 });
   }
 
   const membership = await prisma.groupMembership.findUnique({

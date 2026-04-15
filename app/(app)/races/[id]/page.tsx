@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatWithTime, stageLabel, stageColor } from "@/lib/utils";
 import PredictionForm from "@/components/PredictionForm";
 import MatchResult from "@/components/ResultsPodium";
+import LiveRefresh from "@/components/LiveRefresh";
 
 export default async function MatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -27,19 +28,29 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
     where: { userId, matchId: id },
   });
 
+  const isLive = match.status === "live";
   const isCompleted = match.status === "completed";
-  const isPast = isCompleted || match.scheduledAt < new Date();
-  const hasScore = isCompleted && match.homeScore !== null && match.awayScore !== null;
+  const isPast = isCompleted || isLive || match.scheduledAt < new Date();
+  const hasScore = (isLive || isCompleted) && match.homeScore !== null && match.awayScore !== null;
 
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
+      {/* Auto-refresh every 30s while live */}
+      {isLive && <LiveRefresh intervalMs={30_000} />}
+
       {/* Match header */}
-      <div className="glass-card">
+      <div className={`glass-card ${isLive ? "border-red-500/40" : ""}`}>
         <div className="flex flex-wrap gap-2 mb-3">
           <span className={`badge ${stageColor(match.stage)}`}>{stageLabel(match.stage)}</span>
           {match.group && <span className="badge badge-gray">Grupp {match.group}</span>}
+          {isLive && (
+            <span className="badge bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              LIVE {match.minute && `· ${match.minute}`}
+            </span>
+          )}
           {isCompleted && <span className="badge badge-green">Avslutad</span>}
-          {!isCompleted && isPast && <span className="badge badge-gray">Passerad</span>}
+          {!isCompleted && !isLive && isPast && <span className="badge badge-gray">Passerad</span>}
           {!isPast && <span className="badge badge-blue">Kommande</span>}
         </div>
 
@@ -51,7 +62,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
           </div>
           <div className="text-center shrink-0">
             {hasScore ? (
-              <p className="text-3xl font-black text-white tabular-nums">
+              <p className={`text-3xl font-black tabular-nums ${isLive ? "text-red-300" : "text-white"}`}>
                 {match.homeScore} – {match.awayScore}
               </p>
             ) : (
@@ -70,7 +81,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* Official result */}
-      {hasScore && (
+      {isCompleted && hasScore && (
         <div className="glass-card">
           <h2 className="font-bold text-white mb-4">Officiellt resultat</h2>
           <MatchResult
@@ -106,7 +117,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
             predictedAway: p.predictedAway,
             score: p.score,
           }))}
-          locked={isPast}
+          locked={isLive || isPast}
         />
       )}
     </div>
