@@ -1,3 +1,20 @@
+const FLAG: Record<string, string> = {
+  ALG: "🇩🇿", ARG: "🇦🇷", AUS: "🇦🇺", AUT: "🇦🇹", BEL: "🇧🇪",
+  BIH: "🇧🇦", BRA: "🇧🇷", CAN: "🇨🇦", CIV: "🇨🇮", COD: "🇨🇩",
+  COL: "🇨🇴", CPV: "🇨🇻", CRO: "🇭🇷", CUW: "🇨🇼", CZE: "🇨🇿",
+  ECU: "🇪🇨", EGY: "🇪🇬", ENG: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", ESP: "🇪🇸", FRA: "🇫🇷",
+  GER: "🇩🇪", GHA: "🇬🇭", HAI: "🇭🇹", IRN: "🇮🇷", IRQ: "🇮🇶",
+  JOR: "🇯🇴", JPN: "🇯🇵", KOR: "🇰🇷", MAR: "🇲🇦", MEX: "🇲🇽",
+  NED: "🇳🇱", NOR: "🇳🇴", NZL: "🇳🇿", PAN: "🇵🇦", PAR: "🇵🇾",
+  POR: "🇵🇹", QAT: "🇶🇦", RSA: "🇿🇦", SAU: "🇸🇦", SCO: "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+  SEN: "🇸🇳", SUI: "🇨🇭", SWE: "🇸🇪", TUN: "🇹🇳", TUR: "🇹🇷",
+  URU: "🇺🇾", USA: "🇺🇸", UZB: "🇺🇿",
+};
+
+export function teamFlag(id: string): string {
+  return FLAG[id] ?? "";
+}
+
 export function format(date: Date): string {
   return new Intl.DateTimeFormat("sv-SE", {
     day: "numeric",

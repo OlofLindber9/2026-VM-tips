@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { format } from "@/lib/utils";
+import { format, teamFlag } from "@/lib/utils";
 
 export default async function GroupPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -54,6 +54,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
   const userMap = Object.fromEntries(users.map((u) => [u.id, u.displayName]));
 
   function displayName(uid: string): string {
+    if (uid === userId) return session!.user?.name || userMap[uid] || "Spelare";
     return userMap[uid] || "Deltagare " + uid.slice(0, 6);
   }
 
@@ -163,21 +164,21 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
               return (
                 <Link
                   key={m.id}
-                  href={`/races/${m.id}`}
+                  href={`/matcher/${m.id}`}
                   className="flex items-center justify-between p-3 rounded-xl border border-white/10 hover:border-white/25 hover:bg-white/8 transition-all"
                 >
                   <div>
                     <div className="font-medium text-sm text-white/90">
-                      {m.homeTeam.name} vs {m.awayTeam.name}
+                      {m.homeTeam.name} {teamFlag(m.homeTeam.id)} vs {teamFlag(m.awayTeam.id)} {m.awayTeam.name}
                     </div>
                     <div className="text-xs text-white/40 mt-0.5">{format(m.scheduledAt)}</div>
                   </div>
                   {myPrediction ? (
-                    <span className="badge badge-green shrink-0">
+                    <span className="text-sm font-black tabular-nums text-app-ice shrink-0">
                       {myPrediction.predictedHome}–{myPrediction.predictedAway}
                     </span>
                   ) : (
-                    <span className="badge badge-yellow shrink-0">Tippa →</span>
+                    <span className="text-[11px] font-bold tracking-[0.1em] uppercase text-app-accent/70 shrink-0">Tippa →</span>
                   )}
                 </Link>
               );

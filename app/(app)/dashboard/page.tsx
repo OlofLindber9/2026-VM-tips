@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { format } from "@/lib/utils";
+import { format, teamFlag } from "@/lib/utils";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -47,7 +47,7 @@ export default async function DashboardPage() {
         <div className="glass-card col-span-full lg:col-span-2">
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-bold text-white">Kommande matcher</h2>
-            <Link href="/races" className="text-sm text-app-ice hover:text-white transition-colors">
+            <Link href="/matcher" className="text-sm text-app-ice hover:text-white transition-colors">
               Visa alla →
             </Link>
           </div>
@@ -58,18 +58,18 @@ export default async function DashboardPage() {
               {upcomingMatches.map((m) => (
                 <Link
                   key={m.id}
-                  href={`/races/${m.id}`}
+                  href={`/matcher/${m.id}`}
                   className="flex items-center justify-between p-3 rounded-xl border border-white/10 hover:border-white/25 hover:bg-white/8 transition-all"
                 >
                   <div>
                     <div className="font-medium text-sm text-white/90">
-                      {m.homeTeam.name} vs {m.awayTeam.name}
+                      {m.homeTeam.name} {teamFlag(m.homeTeam.id)} vs {teamFlag(m.awayTeam.id)} {m.awayTeam.name}
                     </div>
                     <div className="text-xs text-white/40 mt-0.5">
                       {format(m.scheduledAt)} · {m.city}
                     </div>
                   </div>
-                  <span className="badge badge-blue shrink-0">Tippa →</span>
+                  <span className="text-[11px] font-bold tracking-[0.1em] uppercase text-app-accent/70 shrink-0">Tippa →</span>
                 </Link>
               ))}
             </div>
@@ -118,7 +118,7 @@ export default async function DashboardPage() {
             {recentPredictions.map((p) => (
               <div key={p.id} className="flex items-center justify-between text-sm">
                 <span className="text-white/70">
-                  {p.match.homeTeam.name} vs {p.match.awayTeam.name}
+                  {p.match.homeTeam.name} {teamFlag(p.match.homeTeam.id)} vs {teamFlag(p.match.awayTeam.id)} {p.match.awayTeam.name}
                 </span>
                 <span className="font-bold text-app-accent">{p.score} pts</span>
               </div>

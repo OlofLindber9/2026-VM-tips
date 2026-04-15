@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { format, stageLabel, stageColor } from "@/lib/utils";
+import { format, stageLabel, stageColor, teamFlag } from "@/lib/utils";
 import { getResult } from "@/lib/scoring";
 
 // Revalidate every 60 seconds so live scores refresh server-side
@@ -89,6 +89,7 @@ type MatchCardMatch = {
   _count: { predictions: number };
 };
 
+
 function MatchCard({ match }: { match: MatchCardMatch }) {
   const isLive = match.status === "live";
   const isCompleted = match.status === "completed";
@@ -101,20 +102,30 @@ function MatchCard({ match }: { match: MatchCardMatch }) {
 
   return (
     <Link
-      href={`/races/${match.id}`}
-      className={`glass-card hover:border-white/30 hover:shadow-xl transition-all overflow-hidden ${isPast && !isCompleted && !isLive ? "opacity-50" : ""} ${isLive ? "border-red-500/40" : ""}`}
+      href={`/matcher/${match.id}`}
+      className={`glass-card border-l-[3px] hover:shadow-xl transition-all overflow-hidden
+        ${isPast && !isCompleted && !isLive ? "opacity-50" : ""}
+        ${isLive ? "border-l-red-500" : "border-l-app-pitch/50"}`}
     >
-      <div className="flex items-center gap-2 mb-3">
-        <span className={`badge ${stageColor(match.stage)}`}>{stageLabel(match.stage)}</span>
-        {match.group && <span className="badge badge-gray">Grupp {match.group}</span>}
+      <div className="flex items-center justify-between mb-3">
+        {/* Stage / group label */}
+        {match.stage === "group" ? (
+          match.group ? (
+            <span className="text-[11px] font-bold tracking-[0.14em] uppercase text-app-accent/75">
+              Grupp {match.group}
+            </span>
+          ) : null
+        ) : (
+          <span className={`badge ${stageColor(match.stage)}`}>{stageLabel(match.stage)}</span>
+        )}
+
+        {/* LIVE indicator — only shown when the match is live */}
         {isLive && (
-          <span className="badge bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1">
+          <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.1em] uppercase text-red-400">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-            LIVE {match.minute && `· ${match.minute}`}
+            Live {match.minute && `· ${match.minute}'`}
           </span>
         )}
-        {isCompleted && <span className="badge badge-green">Avslutad</span>}
-        {!isCompleted && !isLive && !isPast && <span className="badge badge-blue">Kommande</span>}
       </div>
 
       {/* Teams + score row */}
@@ -123,7 +134,8 @@ function MatchCard({ match }: { match: MatchCardMatch }) {
         <span
           className={`flex-1 text-right font-semibold truncate ${homeWon ? "text-white" : "text-white/70"}`}
         >
-          {match.homeTeam.name}
+          {match.homeTeam.name}{" "}
+          <span className="not-italic">{teamFlag(match.homeTeam.id)}</span>
         </span>
 
         {/* Score / time */}
@@ -143,19 +155,20 @@ function MatchCard({ match }: { match: MatchCardMatch }) {
             {match.homeScore} – {match.awayScore}
           </span>
         ) : (
-          <span className="shrink-0 text-sm text-white/40 px-2">vs</span>
+          <span className="shrink-0 text-sm font-bold text-app-pitch px-2">vs</span>
         )}
 
         {/* Away team */}
         <span
           className={`flex-1 text-left font-semibold truncate ${awayWon ? "text-white" : "text-white/70"}`}
         >
+          <span className="not-italic">{teamFlag(match.awayTeam.id)}</span>{" "}
           {match.awayTeam.name}
         </span>
       </div>
 
       <div className="text-xs text-white/35 mt-2 text-center">
-        {format(match.scheduledAt)} · {match.city} · {match._count.predictions} tips
+        {format(match.scheduledAt)} · {match.city} · {match._count.predictions} tippningar
       </div>
     </Link>
   );

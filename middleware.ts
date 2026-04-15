@@ -6,7 +6,7 @@ export default auth((req) => {
   const isAuthRoute = pathname.startsWith("/login") || pathname.startsWith("/signup");
   const isProtected =
     pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/races") ||
+    pathname.startsWith("/matcher") ||
     pathname.startsWith("/groups");
 
   if (!req.auth && isProtected) {

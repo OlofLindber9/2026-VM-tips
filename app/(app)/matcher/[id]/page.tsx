@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { formatWithTime, stageLabel, stageColor } from "@/lib/utils";
+import { formatWithTime, stageLabel, teamFlag } from "@/lib/utils";
 import PredictionForm from "@/components/PredictionForm";
 import MatchResult from "@/components/ResultsPodium";
 import LiveRefresh from "@/components/LiveRefresh";
@@ -40,24 +40,39 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
 
       {/* Match header */}
       <div className={`glass-card ${isLive ? "border-red-500/40" : ""}`}>
-        <div className="flex flex-wrap gap-2 mb-3">
-          <span className={`badge ${stageColor(match.stage)}`}>{stageLabel(match.stage)}</span>
-          {match.group && <span className="badge badge-gray">Grupp {match.group}</span>}
+        <div className="flex items-center gap-4 mb-3">
+          <span className="text-[11px] font-bold tracking-[0.14em] uppercase text-app-accent/75">
+            {match.stage === "group" && match.group
+              ? `Grupp ${match.group}`
+              : stageLabel(match.stage)}
+          </span>
           {isLive && (
-            <span className="badge bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1">
+            <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.1em] uppercase text-red-400">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-              LIVE {match.minute && `· ${match.minute}`}
+              Live {match.minute && `· ${match.minute}'`}
             </span>
           )}
-          {isCompleted && <span className="badge badge-green">Avslutad</span>}
-          {!isCompleted && !isLive && isPast && <span className="badge badge-gray">Passerad</span>}
-          {!isPast && <span className="badge badge-blue">Kommande</span>}
+          {isCompleted && (
+            <span className="text-[11px] font-bold tracking-[0.14em] uppercase text-app-ice/60">
+              Avslutad
+            </span>
+          )}
+          {!isCompleted && !isLive && isPast && (
+            <span className="text-[11px] font-bold tracking-[0.14em] uppercase text-white/30">
+              Passerad
+            </span>
+          )}
+          {!isPast && (
+            <span className="text-[11px] font-bold tracking-[0.14em] uppercase text-app-pitch/80">
+              Kommande
+            </span>
+          )}
         </div>
 
         {/* Teams vs display */}
         <div className="flex items-center justify-between gap-4 mt-4">
           <div className="flex-1 text-right">
-            <p className="text-xl font-bold text-white">{match.homeTeam.name}</p>
+            <p className="text-xl font-bold text-white">{match.homeTeam.name} {teamFlag(match.homeTeam.id)}</p>
             <p className="text-xs text-white/40 mt-0.5">Hemmalag</p>
           </div>
           <div className="text-center shrink-0">
@@ -70,7 +85,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
             )}
           </div>
           <div className="flex-1 text-left">
-            <p className="text-xl font-bold text-white">{match.awayTeam.name}</p>
+            <p className="text-xl font-bold text-white">{teamFlag(match.awayTeam.id)} {match.awayTeam.name}</p>
             <p className="text-xs text-white/40 mt-0.5">Bortalag</p>
           </div>
         </div>

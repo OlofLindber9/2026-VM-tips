@@ -52,7 +52,7 @@ export default async function GroupsPage() {
               >
                 <div className="flex justify-between items-start mb-2">
                   <h2 className="font-bold text-white text-lg">{m.group.name}</h2>
-                  {isOwner && <span className="badge badge-blue">Ägare</span>}
+                  {isOwner && <span className="text-[11px] font-bold tracking-[0.14em] uppercase text-app-accent/75">Ägare</span>}
                 </div>
                 <p className="text-white/50 text-sm">
                   {m.group._count.members} {m.group._count.members !== 1 ? "deltagare" : "deltagare"} ·{" "}
