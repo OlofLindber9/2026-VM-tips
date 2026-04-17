@@ -25,26 +25,26 @@ export default function GroupChat({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isAtBottomRef = useRef(true);
 
-  async function fetchMessages() {
-    try {
-      const res = await fetch(`/api/groups/${groupId}/chat`);
-      if (!res.ok) return;
-      const data: Message[] = await res.json();
-      setMessages((prev) => {
-        if (
-          prev.length === data.length &&
-          prev[prev.length - 1]?.id === data[data.length - 1]?.id
-        )
-          return prev;
-        return data;
-      });
-    } catch {
-      // ignore network errors silently
-    }
-  }
-
   // Initial fetch + polling every 8s
   useEffect(() => {
+    async function fetchMessages() {
+      try {
+        const res = await fetch(`/api/groups/${groupId}/chat`);
+        if (!res.ok) return;
+        const data: Message[] = await res.json();
+        setMessages((prev) => {
+          if (
+            prev.length === data.length &&
+            prev[prev.length - 1]?.id === data[data.length - 1]?.id
+          )
+            return prev;
+          return data;
+        });
+      } catch {
+        // ignore network errors silently
+      }
+    }
+
     fetchMessages();
     const interval = setInterval(fetchMessages, 8000);
     return () => clearInterval(interval);

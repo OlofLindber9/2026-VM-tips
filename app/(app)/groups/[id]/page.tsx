@@ -2,7 +2,6 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { format, teamFlag } from "@/lib/utils";
 import GroupChat from "@/components/GroupChat";
 
 export default async function GroupPage({ params }: { params: Promise<{ id: string }> }) {
@@ -71,12 +70,6 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     }))
     .sort((a, b) => b.totalScore - a.totalScore);
 
-  const upcomingMatches = await prisma.match.findMany({
-    where: { status: "upcoming", scheduledAt: { gte: new Date() } },
-    orderBy: { scheduledAt: "asc" },
-    take: 5,
-    include: { homeTeam: true, awayTeam: true },
-  });
 
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
