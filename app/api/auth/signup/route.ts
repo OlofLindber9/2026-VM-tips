@@ -11,6 +11,9 @@ export async function POST(request: Request) {
   if (!email || !password || !displayName) {
     return NextResponse.json({ error: "Alla fält är obligatoriska" }, { status: 400 });
   }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json({ error: "Ogiltig e-postadress" }, { status: 400 });
+  }
   if (password.length < 6) {
     return NextResponse.json({ error: "Lösenordet måste vara minst 6 tecken" }, { status: 400 });
   }

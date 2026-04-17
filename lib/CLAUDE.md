@@ -156,20 +156,41 @@ Fetches all Predictions where `matchId = X AND score IS NULL`, calls `calculateS
 No database dependencies. Pure functions.
 
 ```typescript
-type Result = "home" | "draw" | "away"
+type MatchResult = "home" | "draw" | "away"
 
-getResult(home: number, away: number): Result
+getResult(home: number, away: number): MatchResult
 // Returns who won or if it was a draw
 
-calculateScore(
-  predictedHome: number,
-  predictedAway: number,
-  actualHome: number,
-  actualAway: number
+calculateGroupScore(
+  predictedHome: number, predictedAway: number,
+  actualHome: number,   actualAway: number
 ): 0 | 1 | 3
-// 3 = exact score
-// 1 = correct result (right winner/draw, wrong score)
-// 0 = wrong result
+// 3 = exact score; 1 = correct W/D/L; 0 = wrong result
+
+calculateKnockoutScore(predictedWinner: string, actualWinner: string): 0 | 2
+// 2 = correct winner; 0 = wrong
+// Used for r32, r16, qf, sf, 3p
+
+calculateFinalScore(
+  predictedHome: number, predictedAway: number,
+  actual90Home: number,  actual90Away: number,
+  predictedWinner: string, actualWinner: string
+): 0 | 2 | 5
+// 5 = correct winner + exact 90-min score
+// 2 = correct winner only
+// 0 = wrong winner
+
+calculateScore(
+  stage: string,
+  predictedHome: number | null,
+  predictedAway: number | null,
+  predictedWinner: string | null,
+  actual90Home: number,
+  actual90Away: number,
+  knockoutWinner: string | null
+): number
+// Main entry point used by sync when scoring predictions.
+// Dispatches to the correct stage-specific function above.
 ```
 
 ---

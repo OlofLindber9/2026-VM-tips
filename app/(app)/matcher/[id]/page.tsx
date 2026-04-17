@@ -393,7 +393,7 @@ function LivePredictionStatus({
     >
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs font-bold uppercase tracking-widest" style={{ color: meta.color }}>
-          {isLive ? "Ditt tips just nu" : "Ditt tips"}
+          {isLive ? "Ditt tip just nu" : "Ditt tip"}
         </p>
         <span
           className="text-lg font-black tabular-nums"

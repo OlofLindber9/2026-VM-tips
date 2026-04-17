@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { format, teamFlag } from "@/lib/utils";
+import GroupChat from "@/components/GroupChat";
 
 export default async function GroupPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -155,6 +156,9 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
       </div>
+
+      {/* Chat */}
+      <GroupChat groupId={id} currentUserId={userId} />
     </div>
   );
 }

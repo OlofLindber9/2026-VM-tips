@@ -111,13 +111,33 @@ Create or update a prediction. Idempotent — safe to call multiple times (upser
 
 **Auth required:** Yes + must be a member of the specified group
 
-**Request body:**
+**Request body — group stage:**
 ```json
 {
   "matchId": "clxxx",
   "groupId": "clyyy",
   "predictedHome": 2,
   "predictedAway": 1
+}
+```
+
+**Request body — knockout (non-final):**
+```json
+{
+  "matchId": "clxxx",
+  "groupId": "clyyy",
+  "predictedWinner": "home"
+}
+```
+
+**Request body — final:**
+```json
+{
+  "matchId": "clxxx",
+  "groupId": "clyyy",
+  "predictedHome": 1,
+  "predictedAway": 0,
+  "predictedWinner": "home"
 }
 ```
 
@@ -130,7 +150,9 @@ Create or update a prediction. Idempotent — safe to call multiple times (upser
 
 **Validation rules:**
 - `matchId`, `groupId` required
-- `predictedHome`, `predictedAway` must be integers 0–99
+- Group stage: `predictedHome`, `predictedAway` must be integers 0–99
+- Knockout: `predictedWinner` must be `"home"` or `"away"`
+- Final: both score fields and `predictedWinner` required
 - Match status must be `"upcoming"` (locked if `"live"` or `"completed"`)
 
 **Flow:** Auth check → validate inputs → verify group membership → find match → check status → `prisma.prediction.upsert` on `[userId, matchId, groupId]`.

@@ -74,23 +74,28 @@ Cascade delete: when a Group is deleted, all its memberships are deleted.
 
 #### Prediction
 ```
-id            String   @id @default(cuid())
-userId        String                       // User.id (no FK constraint)
-matchId       String
-groupId       String
-predictedHome Int                          // 0–99
-predictedAway Int                          // 0–99
-score         Int?                         // null=unscored; 0|1|3 after match completes
-createdAt     DateTime @default(now())
-updatedAt     DateTime @updatedAt
+id              String   @id @default(cuid())
+userId          String                         // User.id (no FK constraint — plain string)
+matchId         String
+groupId         String
+predictedHome   Int?                           // null for knockout non-final predictions
+predictedAway   Int?                           // null for knockout non-final predictions
+predictedWinner String?                        // "home"|"away" — for knockout + final
+score           Int?                           // null=unscored; set after match completes
+createdAt       DateTime @default(now())
+updatedAt       DateTime @updatedAt
+match           Match    @relation(...)
+group           Group    @relation(...)
 
-@@unique([userId, matchId, groupId])       // one prediction per user per match per group
+@@unique([userId, matchId, groupId])           // one prediction per user per match per group
 ```
 
-**Scoring:**
-- `3` — exact score (predictedHome == homeScore && predictedAway == awayScore)
-- `1` — correct result (W/D/L) but wrong score
-- `0` — wrong result
+**Score values by stage:**
+- Group: `3` (exact), `1` (correct W/D/L), `0` (wrong)
+- Knockout non-final: `2` (correct winner), `0` (wrong)
+- Final: `5` (correct winner + exact 90-min score), `2` (correct winner only), `0` (wrong)
+
+**Important:** `GroupMembership` has no FK/relation to `User`. To resolve display names for group members, query `prisma.user.findMany({ where: { id: { in: memberUserIds } } })` separately.
 
 ---
 

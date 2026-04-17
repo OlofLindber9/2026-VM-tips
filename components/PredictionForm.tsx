@@ -411,7 +411,7 @@ export default function PredictionForm({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="font-bold text-white">
-            {isLocked || hasSavedTip ? "Ditt tips" : "Lägg ditt tips"}
+            {isLocked || hasSavedTip ? "Ditt tip" : "Lägg ditt tip"}
           </h2>
           {hasSavedTip && !isLocked && (
             <span

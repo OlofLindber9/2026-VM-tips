@@ -48,13 +48,23 @@ model Match {
 }
 
 model Group {
-  id          String            @id @default(cuid())
-  name        String
-  inviteCode  String            @unique @default(cuid())
-  createdBy   String            // User.id
-  createdAt   DateTime          @default(now())
-  members     GroupMembership[]
-  predictions Prediction[]
+  id           String            @id @default(cuid())
+  name         String
+  inviteCode   String            @unique @default(cuid())
+  createdBy    String            // User.id
+  createdAt    DateTime          @default(now())
+  members      GroupMembership[]
+  predictions  Prediction[]
+  chatMessages ChatMessage[]
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  groupId   String
+  userId    String   // User.id (no FK constraint)
+  content   String
+  createdAt DateTime @default(now())
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
 }
 
 model GroupMembership {
