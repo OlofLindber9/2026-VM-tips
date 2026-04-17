@@ -28,6 +28,23 @@ export type AFTeam = {
   name: string;
 };
 
+export type AFEvent = {
+  time: { elapsed: number; extra: number | null };
+  team: { id: number; name: string };
+  player: { id: number | null; name: string };
+  assist: { id: number | null; name: string } | null;
+  type: string;   // "Goal" | "Card" | "Subst" | "Var"
+  detail: string; // "Normal Goal" | "Penalty" | "Own Goal" | "Yellow Card" | "Red Card" | ...
+  comments: string | null;
+};
+
+export type AFStatEntry = { type: string; value: string | number | null };
+
+export type AFTeamStatistics = {
+  team: { id: number; name: string };
+  statistics: AFStatEntry[];
+};
+
 export type AFFixture = {
   fixture: {
     id: number;
@@ -47,7 +64,6 @@ export type AFFixture = {
     home: number | null;
     away: number | null;
   };
-  /** Detailed score breakdown — only present on completed matches */
   score?: {
     halftime?: { home: number | null; away: number | null };
     fulltime?: { home: number | null; away: number | null };
@@ -55,6 +71,10 @@ export type AFFixture = {
     /** Penalty shootout goals (NOT total goals including match — pure penalty count) */
     penalty?: { home: number | null; away: number | null };
   };
+  /** Match events — embedded in live/completed fixture responses */
+  events?: AFEvent[];
+  /** Per-team statistics — embedded in live/completed fixture responses */
+  statistics?: AFTeamStatistics[];
 };
 
 type AFResponse<T> = {
@@ -122,6 +142,15 @@ export async function getAllFixtures(): Promise<AFFixture[]> {
   return apiFetch<AFFixture>(
     `/fixtures?league=${WC_LEAGUE}&season=${WC_SEASON}`
   );
+}
+
+/**
+ * Single fixture by API-Football ID, including embedded events and statistics.
+ * Use this to get live match details (events timeline, key stats).
+ */
+export async function getFixtureById(id: number): Promise<AFFixture | null> {
+  const results = await apiFetch<AFFixture>(`/fixtures?id=${id}`);
+  return results[0] ?? null;
 }
 
 // ---------------------------------------------------------------------------

@@ -2,6 +2,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { format, teamFlag } from "@/lib/utils";
+import TournamentCountdown from "@/components/TournamentCountdown";
+import { applyMockIfEnabled } from "@/lib/mock-live";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -9,7 +11,7 @@ export default async function DashboardPage() {
   const displayName = session!.user?.name || session!.user?.email?.split("@")[0] || "Spelare";
 
   const [
-    upcomingMatches,
+    upcomingMatchesRaw,
     memberships,
     recentPredictions,
     groupMatchCount,
@@ -18,7 +20,12 @@ export default async function DashboardPage() {
     knockoutPredictedRaw,
   ] = await Promise.all([
     prisma.match.findMany({
-      where: { status: "upcoming", scheduledAt: { gte: new Date() } },
+      where: {
+        OR: [
+          { status: "upcoming", scheduledAt: { gte: new Date() } },
+          { status: "live" },
+        ],
+      },
       orderBy: { scheduledAt: "asc" },
       take: 3,
       include: { homeTeam: true, awayTeam: true },
@@ -53,6 +60,8 @@ export default async function DashboardPage() {
     }),
   ]);
 
+  const upcomingMatches = applyMockIfEnabled(upcomingMatchesRaw);
+
   const groupPredictedCount = groupPredictedMatches.length;
   const knockoutPredictedCount = knockoutPredictedRaw.length;
   const groupPct = groupMatchCount > 0 ? Math.round((groupPredictedCount / groupMatchCount) * 100) : 0;
@@ -70,6 +79,8 @@ export default async function DashboardPage() {
         </h1>
         <p className="text-white/50 mt-1">Här är din översikt.</p>
       </div>
+
+      <TournamentCountdown />
 
       {/* Prediction progress — only shown when user is in at least one group */}
       {isInGroup && groupMatchCount > 0 && (
@@ -128,7 +139,9 @@ export default async function DashboardPage() {
         {/* Upcoming matches */}
         <div className="glass-card col-span-full lg:col-span-2">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="font-bold text-white">Kommande matcher</h2>
+            <h2 className="font-bold text-white">
+              {upcomingMatches.some((m) => m.status === "live") ? "Live & kommande" : "Kommande matcher"}
+            </h2>
             <Link href="/matcher" className="text-sm text-app-ice hover:text-white transition-colors">
               Visa alla →
             </Link>
@@ -137,11 +150,18 @@ export default async function DashboardPage() {
             <p className="text-white/40 text-sm">Inga kommande matcher — kom tillbaka snart.</p>
           ) : (
             <div className="space-y-3">
-              {upcomingMatches.map((m) => (
+              {upcomingMatches.map((m) => {
+                const isLive = m.status === "live";
+                const hasScore = isLive && m.homeScore !== null && m.awayScore !== null;
+                return (
                 <Link
                   key={m.id}
                   href={`/matcher/${m.id}`}
-                  className="flex items-center justify-between p-3 rounded-xl border border-white/10 hover:border-white/25 hover:bg-white/8 transition-all"
+                  className={`flex items-center justify-between p-3 rounded-xl border transition-all
+                    ${isLive
+                      ? "border-red-500/40 bg-red-500/5 hover:border-red-500/60 hover:bg-red-500/10"
+                      : "border-white/10 hover:border-white/25 hover:bg-white/8"
+                    }`}
                 >
                   <div>
                     <div className="font-medium text-sm text-white/90">
@@ -151,9 +171,24 @@ export default async function DashboardPage() {
                       {format(m.scheduledAt)} · {m.city}
                     </div>
                   </div>
-                  <span className="text-[11px] font-bold tracking-[0.1em] uppercase text-app-accent/70 shrink-0">Tippa →</span>
+                  {isLive ? (
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className="flex items-center gap-1 text-[11px] font-bold tracking-[0.1em] uppercase text-red-400">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                        Live{m.minute && ` · ${m.minute}'`}
+                      </span>
+                      {hasScore && (
+                        <span className="text-sm font-black tabular-nums text-white/80">
+                          {m.homeScore} – {m.awayScore}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-[11px] font-bold tracking-[0.1em] uppercase text-app-accent/70 shrink-0">Tippa →</span>
+                  )}
                 </Link>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

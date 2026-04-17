@@ -1,20 +1,36 @@
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { format, stageLabel, stageColor, teamFlag } from "@/lib/utils";
 import { getResult } from "@/lib/scoring";
+import { applyMockIfEnabled } from "@/lib/mock-live";
 
 // Revalidate every 60 seconds so live scores refresh server-side
 export const revalidate = 60;
 
 export default async function RacesPage() {
-  const matches = await prisma.match.findMany({
-    orderBy: { scheduledAt: "asc" },
-    include: {
-      homeTeam: true,
-      awayTeam: true,
-      _count: { select: { predictions: true } },
-    },
-  });
+  const session = await auth();
+  const userId = session?.user?.id as string | undefined;
+
+  const [rawMatches, userPredictions] = await Promise.all([
+    prisma.match.findMany({
+      orderBy: { scheduledAt: "asc" },
+      include: {
+        homeTeam: true,
+        awayTeam: true,
+        _count: { select: { predictions: true } },
+      },
+    }),
+    userId
+      ? prisma.prediction.findMany({
+          where: { userId },
+          select: { matchId: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const tippedMatchIds = new Set(userPredictions.map((p) => p.matchId));
+  const matches = applyMockIfEnabled(rawMatches);
 
   const now = new Date();
   const live = matches.filter((m) => m.status === "live");
@@ -75,7 +91,7 @@ export default async function RacesPage() {
           </h2>
           <div className="grid gap-3">
             {live.map((m) => (
-              <MatchCard key={m.id} match={m} />
+              <MatchCard key={m.id} match={m} hasTipped={tippedMatchIds.has(m.id)} />
             ))}
           </div>
         </section>
@@ -86,7 +102,7 @@ export default async function RacesPage() {
           <h2 className="font-bold text-lg text-white/70 mb-3">Kommande</h2>
           <div className="grid gap-3">
             {upcoming.map((m) => (
-              <MatchCard key={m.id} match={m} />
+              <MatchCard key={m.id} match={m} hasTipped={tippedMatchIds.has(m.id)} />
             ))}
           </div>
         </section>
@@ -97,7 +113,7 @@ export default async function RacesPage() {
           <h2 className="font-bold text-lg text-white/70 mb-3">Avslutade</h2>
           <div className="grid gap-3">
             {past.map((m) => (
-              <MatchCard key={m.id} match={m} />
+              <MatchCard key={m.id} match={m} hasTipped={tippedMatchIds.has(m.id)} />
             ))}
           </div>
         </section>
@@ -126,7 +142,7 @@ type MatchCardMatch = {
 };
 
 
-function MatchCard({ match }: { match: MatchCardMatch }) {
+function MatchCard({ match, hasTipped }: { match: MatchCardMatch; hasTipped: boolean }) {
   const isLive = match.status === "live";
   const isCompleted = match.status === "completed";
   const isPast = isCompleted || match.scheduledAt < new Date();
@@ -160,20 +176,33 @@ function MatchCard({ match }: { match: MatchCardMatch }) {
           <span className={`badge ${stageColor(match.stage)}`}>{stageLabel(match.stage)}</span>
         )}
 
-        {/* LIVE indicator */}
-        {isLive && (
-          <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.1em] uppercase text-red-400">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-            Live {match.minute && `· ${match.minute}'`}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Tipped indicator */}
+          {hasTipped && (
+            <span className="flex items-center gap-1 text-[11px] font-bold tracking-[0.08em] uppercase px-2 py-0.5 rounded-full"
+              style={{ background: "rgba(52,211,153,0.15)", color: "rgb(52,211,153)" }}>
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="shrink-0">
+                <path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Tippat
+            </span>
+          )}
 
-        {/* Knockout tip hint */}
-        {isKnockout && !isLive && !isCompleted && (
-          <span className="text-[10px] font-bold tracking-widest uppercase text-app-gold/60">
-            Tippa vinnare
-          </span>
-        )}
+          {/* LIVE indicator */}
+          {isLive && (
+            <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.1em] uppercase text-red-400">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              Live {match.minute && `· ${match.minute}'`}
+            </span>
+          )}
+
+          {/* Knockout tip hint */}
+          {isKnockout && !isLive && !isCompleted && (
+            <span className="text-[10px] font-bold tracking-widest uppercase text-app-gold/60">
+              Tippa vinnare
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Teams + score row */}

@@ -22,6 +22,9 @@ export async function POST(request: Request) {
   if (match.status === "live" || match.status === "completed") {
     return NextResponse.json({ error: "Tipsningen är stängd — matchen har startat" }, { status: 403 });
   }
+  if (match.stage === "group" && new Date() >= new Date("2026-06-11T00:00:00Z")) {
+    return NextResponse.json({ error: "Tipsningen för gruppspelet är stängd — VM har börjat" }, { status: 403 });
+  }
 
   const isKnockout = KNOCKOUT_STAGES.has(match.stage);
   const isFinal = match.stage === "final";

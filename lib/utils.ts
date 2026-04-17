@@ -1,3 +1,6 @@
+// All group-stage predictions lock when the tournament kicks off
+export const TOURNAMENT_START = new Date("2026-06-11T00:00:00Z");
+
 const FLAG: Record<string, string> = {
   ALG: "🇩🇿", ARG: "🇦🇷", AUS: "🇦🇺", AUT: "🇦🇹", BEL: "🇧🇪",
   BIH: "🇧🇦", BRA: "🇧🇷", CAN: "🇨🇦", CIV: "🇨🇮", COD: "🇨🇩",
