@@ -14,10 +14,11 @@ export default function NavBar({ user }: NavBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const links = [
-    { href: "/dashboard", label: "Hem",         icon: "🏠" },
-    { href: "/matcher",   label: "Matcher",      icon: "⚽" },
-    { href: "/groups",    label: "Mina grupper", icon: "👥" },
-    { href: "/regler",    label: "Regler",       icon: "📋" },
+    { href: "/dashboard", label: "Hem",          icon: "🏠" },
+    { href: "/matcher",   label: "Matcher",       icon: "⚽" },
+    { href: "/slutspel",  label: "Slutspel",      icon: "🏆" },
+    { href: "/groups",    label: "Mina grupper",  icon: "👥" },
+    { href: "/regler",    label: "Regler",        icon: "📋" },
   ];
 
   return (

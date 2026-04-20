@@ -3,14 +3,11 @@ import { auth } from "@/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { formatWithTime, stageLabel, teamFlag, TOURNAMENT_START } from "@/lib/utils";
-import { getFixtureById } from "@/lib/api-football";
 import {
   MOCK_EVENTS,
   MOCK_STATS,
   MOCK_MATCH_OVERRIDE,
   MOCK_HALFTIME,
-  parseEvents,
-  parseStats,
   type MockEvent,
   type MockStats,
 } from "@/lib/mock-live";
@@ -83,6 +80,11 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
   const hasScore = (isLive || isCompleted) && match.homeScore !== null && match.awayScore !== null;
   const isKnockout = match.stage !== "group";
   const groupStageLocked = match.stage === "group" && now >= TOURNAMENT_START;
+  const isTeamTBD = match.homeTeam.id === "TBD" || match.awayTeam.id === "TBD";
+
+  function teamName(id: string, name: string) {
+    return id === "TBD" ? "Okänt lag" : name;
+  }
 
   // ---------------------------------------------------------------------------
   // Fetch live events + statistics (real API or mock)
@@ -96,23 +98,8 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
       liveEvents = MOCK_EVENTS;
       liveStats = MOCK_STATS;
       halftime = MOCK_HALFTIME;
-    } else if (match.apiFootballId) {
-      try {
-        const fixture = await getFixtureById(match.apiFootballId);
-        if (fixture) {
-          liveEvents = fixture.events
-            ? parseEvents(fixture.events, fixture.teams.home.id)
-            : [];
-          liveStats = fixture.statistics ? parseStats(fixture.statistics) : null;
-          const ht = fixture.score?.halftime;
-          if (ht && ht.home !== null && ht.away !== null) {
-            halftime = { home: ht.home, away: ht.away };
-          }
-        }
-      } catch {
-        // Silent fail — page renders without live details
-      }
     }
+    // TheSportsDB free tier does not provide live events or statistics.
   }
 
   const showLiveDetails = (liveEvents !== null) && (liveEvents.length > 0 || liveStats !== null);
@@ -210,8 +197,8 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
         {/* Teams + score */}
         <div className="flex items-center justify-between gap-4 mt-4">
           <div className="flex-1 text-right">
-            <p className="text-xl font-bold text-white leading-tight">
-              {match.homeTeam.name} {teamFlag(match.homeTeam.id)}
+            <p className={`text-xl font-bold leading-tight ${isTeamTBD ? "text-white/35 italic" : "text-white"}`}>
+              {teamName(match.homeTeam.id, match.homeTeam.name)} {teamFlag(match.homeTeam.id)}
             </p>
             <p className="text-xs text-white/40 mt-0.5">Hemmalag</p>
           </div>
@@ -228,8 +215,8 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
             )}
           </div>
           <div className="flex-1 text-left">
-            <p className="text-xl font-bold text-white leading-tight">
-              {teamFlag(match.awayTeam.id)} {match.awayTeam.name}
+            <p className={`text-xl font-bold leading-tight ${isTeamTBD ? "text-white/35 italic" : "text-white"}`}>
+              {teamFlag(match.awayTeam.id)} {teamName(match.awayTeam.id, match.awayTeam.name)}
             </p>
             <p className="text-xs text-white/40 mt-0.5">Bortalag</p>
           </div>
@@ -274,8 +261,8 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
           isCompleted={isCompleted}
           isKnockout={isKnockout}
           hasScore={hasScore}
-          homeTeamName={match.homeTeam.name}
-          awayTeamName={match.awayTeam.name}
+          homeTeamName={teamName(match.homeTeam.id, match.homeTeam.name)}
+          awayTeamName={teamName(match.awayTeam.id, match.awayTeam.name)}
         />
       )}
 
@@ -319,8 +306,8 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
         <PredictionForm
           match={{
             id: match.id,
-            homeTeam: { id: match.homeTeam.id, name: match.homeTeam.name },
-            awayTeam: { id: match.awayTeam.id, name: match.awayTeam.name },
+            homeTeam: { id: match.homeTeam.id, name: teamName(match.homeTeam.id, match.homeTeam.name) },
+            awayTeam: { id: match.awayTeam.id, name: teamName(match.awayTeam.id, match.awayTeam.name) },
             status: match.status,
             stage: match.stage,
           }}

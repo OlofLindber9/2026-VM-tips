@@ -40,7 +40,7 @@ model Match {
   homeScore      Int?     // null until played
   awayScore      Int?     // null until played
   minute         String?  // current match minute, e.g. "45+2" — only set when live
-  apiFootballId  Int?     @unique // fixture id from api-football.com for syncing
+  sportsDbId     String?  @unique // event id from TheSportsDB for syncing
   knockoutWinner String?  // "home" | "away" — who won after full match (incl. ET/PEN); knockout stages only
   predictions Prediction[]
   createdAt   DateTime @default(now())

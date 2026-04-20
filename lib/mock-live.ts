@@ -11,8 +11,6 @@
  *   Events: Away goal 23', Home goal 38', Home penalty 61', Away yellow 70'
  */
 
-import type { AFEvent, AFTeamStatistics } from "./api-football";
-
 // Injected match state (overrides DB values when mock is active)
 export const MOCK_MATCH_OVERRIDE = {
   status: "live" as const,
@@ -125,68 +123,3 @@ export function applyMockIfEnabled<
   );
 }
 
-// ---------------------------------------------------------------------------
-// Helpers for parsing real API-Football data into the same shape as MockStats
-// ---------------------------------------------------------------------------
-
-function stat(
-  stats: AFTeamStatistics["statistics"],
-  type: string
-): number {
-  const entry = stats.find((s) => s.type === type);
-  if (!entry || entry.value === null) return 0;
-  if (typeof entry.value === "string") return parseInt(entry.value) || 0;
-  return entry.value;
-}
-
-export function parseStats(statistics: AFTeamStatistics[]): MockStats | null {
-  if (statistics.length < 2) return null;
-  const [home, away] = statistics;
-  return {
-    possession: {
-      home: stat(home.statistics, "Ball Possession"),
-      away: stat(away.statistics, "Ball Possession"),
-    },
-    shotsOnGoal: {
-      home: stat(home.statistics, "Shots on Goal"),
-      away: stat(away.statistics, "Shots on Goal"),
-    },
-    totalShots: {
-      home: stat(home.statistics, "Total Shots"),
-      away: stat(away.statistics, "Total Shots"),
-    },
-    corners: {
-      home: stat(home.statistics, "Corner Kicks"),
-      away: stat(away.statistics, "Corner Kicks"),
-    },
-    fouls: {
-      home: stat(home.statistics, "Fouls"),
-      away: stat(away.statistics, "Fouls"),
-    },
-    offsides: {
-      home: stat(home.statistics, "Offsides"),
-      away: stat(away.statistics, "Offsides"),
-    },
-    yellowCards: {
-      home: stat(home.statistics, "Yellow Cards"),
-      away: stat(away.statistics, "Yellow Cards"),
-    },
-  };
-}
-
-export function parseEvents(
-  apiEvents: AFEvent[],
-  homeTeamId: number
-): MockEvent[] {
-  return apiEvents
-    .filter((e) => e.type === "Goal" || e.type === "Card" || e.type === "Subst")
-    .map((e) => ({
-      minute: e.time.elapsed,
-      extra: e.time.extra,
-      side: e.team.id === homeTeamId ? "home" : "away",
-      player: e.player.name,
-      assist: e.assist?.name ?? null,
-      type: e.type as "Goal" | "Card" | "Subst",
-      detail: e.detail,
-    }));
-}

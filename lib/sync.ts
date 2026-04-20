@@ -1,83 +1,97 @@
 /**
- * Match sync logic — pulls live & recent results from API-Football and
- * writes them into our DB.  Also scores predictions when a match finishes.
+ * Match sync logic — pulls results from TheSportsDB and writes them into our DB.
+ * Also scores predictions when a match finishes.
  *
- * Call this from app/api/sync/matches/route.ts on a schedule (e.g. every 60s
- * while matches are live, every 5 min otherwise).
+ * Call this from app/api/sync/matches/route.ts on a schedule:
+ *   - Match days:      every 60s while matches are live
+ *   - Between matches: every 5 minutes
+ *
+ * Note: TheSportsDB free tier does not provide live in-progress scores.
+ * Status will be set to "live" when a match is in progress, but the score
+ * will only be written once the match is "Match Finished".
  */
 
 import { prisma } from "@/lib/prisma";
 import { calculateScore } from "@/lib/scoring";
 import {
-  getAllFixtures,
-  getFixturesByDate,
-  getLiveFixtures,
+  getSeasonEvents,
+  getEventsByDate,
   isCompleted,
   isLive,
-  minuteLabel,
-  type AFFixture,
-} from "@/lib/api-football";
+  parseScore,
+  resolveKnockoutWinner,
+  type SDBEvent,
+} from "@/lib/thesportsdb";
 
 // ---------------------------------------------------------------------------
-// apiFootballId bootstrap
+// Bootstrap: link unlinked DB matches to TheSportsDB event IDs
 // ---------------------------------------------------------------------------
 
 /**
- * On first run (no apiFootballId stored yet), fetch all WC 2026 fixtures from
- * API-Football and match them to our DB rows by home/away team name + date.
- *
- * We normalise team names to lower-case for matching, and accept a ±1 day
- * tolerance for timezone-edge-case dates.
+ * For any DB match that has no sportsDbId yet, fetch all TheSportsDB season
+ * events and try to match by team name + date (±1 day tolerance).
+ * Called automatically at the start of each sync if unlinked matches exist.
  */
-export async function bootstrapApiIds(): Promise<{
-  matched: number;
-  unmatched: number;
-}> {
+async function bootstrapSportsDbIds(): Promise<{ matched: number; unmatched: number }> {
   const dbMatches = await prisma.match.findMany({
-    where: { apiFootballId: null },
+    where: { sportsDbId: null, status: { not: "completed" } },
     include: { homeTeam: true, awayTeam: true },
   });
-
   if (dbMatches.length === 0) return { matched: 0, unmatched: 0 };
 
-  const allFixtures = await getAllFixtures();
+  const events = await getSeasonEvents();
 
-  // Build lookup: "homeName|awayName|date" → AF fixture
-  const fixtureIndex = new Map<string, AFFixture>();
-  for (const f of allFixtures) {
-    const date = f.fixture.date.slice(0, 10); // "2026-06-11"
-    const key = `${f.teams.home.name.toLowerCase()}|${f.teams.away.name.toLowerCase()}|${date}`;
-    fixtureIndex.set(key, f);
+  // Build index: "homeTeamName|awayTeamName|date" → event (lower-case names, ±1 day)
+  const index = new Map<string, SDBEvent>();
+  for (const ev of events) {
+    const base = new Date(ev.dateEvent);
+    for (let delta = -1; delta <= 1; delta++) {
+      const d = new Date(base);
+      d.setUTCDate(d.getUTCDate() + delta);
+      const key = `${ev.strHomeTeam.toLowerCase()}|${ev.strAwayTeam.toLowerCase()}|${d.toISOString().slice(0, 10)}`;
+      index.set(key, ev);
+    }
   }
 
+  // Also build reverse-name index using Swedish display names from DB
+  // (so "Mexiko" matches "Mexico" via team lookup)
   let matched = 0;
   let unmatched = 0;
 
   for (const dbMatch of dbMatches) {
     const date = dbMatch.scheduledAt.toISOString().slice(0, 10);
+
+    // Try direct name match and ±1 day
+    let found: SDBEvent | undefined;
     const homeLC = dbMatch.homeTeam.name.toLowerCase();
     const awayLC = dbMatch.awayTeam.name.toLowerCase();
 
-    // Try exact date first, then ±1 day
-    let fixture: AFFixture | undefined;
-    for (let delta = 0; delta <= 1; delta++) {
-      const tryDates = [shiftDate(date, -delta), shiftDate(date, delta)];
-      for (const d of tryDates) {
-        fixture = fixtureIndex.get(`${homeLC}|${awayLC}|${d}`);
-        if (fixture) break;
+    for (const [key, ev] of index) {
+      const [evHome, evAway, evDate] = key.split("|");
+      const dateDiff = Math.abs(new Date(evDate).getTime() - new Date(date).getTime()) / 86400000;
+      if (dateDiff <= 1) {
+        // Check if names are substrings of each other (handles partial matches)
+        const evHomeFull = ev.strHomeTeam.toLowerCase();
+        const evAwayFull = ev.strAwayTeam.toLowerCase();
+        if (
+          (evHomeFull.includes(homeLC) || homeLC.includes(evHomeFull)) &&
+          (evAwayFull.includes(awayLC) || awayLC.includes(evAwayFull))
+        ) {
+          found = ev;
+          break;
+        }
       }
-      if (fixture) break;
+      void evHome; void evAway;
     }
 
-    if (!fixture) {
-      console.warn(`  ⚠ No API-Football match for: ${dbMatch.homeTeam.name} vs ${dbMatch.awayTeam.name} on ${date}`);
+    if (!found) {
       unmatched++;
       continue;
     }
 
     await prisma.match.update({
       where: { id: dbMatch.id },
-      data: { apiFootballId: fixture.fixture.id },
+      data: { sportsDbId: found.idEvent },
     });
     matched++;
   }
@@ -98,67 +112,56 @@ export type SyncResult = {
 
 /**
  * Full sync cycle:
- * 1. Bootstrap apiFootballId mappings if needed.
- * 2. Fetch live fixtures + today's finished fixtures.
- * 3. Update match status / scores / minute in DB.
- * 4. Score predictions for newly completed matches.
+ * 1. Fetch today's WC 2026 events from TheSportsDB.
+ * 2. Update match status / scores in DB.
+ * 3. Score predictions for newly completed matches.
  */
 export async function syncMatches(): Promise<SyncResult> {
   const result: SyncResult = { live: 0, completed: 0, predictionsScored: 0 };
 
-  // Bootstrap IDs for any DB matches that don't have one yet
-  const needsBootstrap = await prisma.match.count({ where: { apiFootballId: null, status: { not: "completed" } } });
+  // Bootstrap sportsDbId for any unlinked matches (TheSportsDB adds events over time)
+  const needsBootstrap = await prisma.match.count({
+    where: { sportsDbId: null, status: { not: "completed" } },
+  });
   if (needsBootstrap > 0) {
-    result.bootstrapped = await bootstrapApiIds();
+    result.bootstrapped = await bootstrapSportsDbIds();
     console.log(`  Bootstrap: ${result.bootstrapped.matched} matched, ${result.bootstrapped.unmatched} unmatched`);
   }
 
-  // Fetch live fixtures + today's fixtures (catches matches that just ended)
   const today = new Date().toISOString().slice(0, 10);
-  const [liveFixtures, todayFixtures] = await Promise.all([
-    getLiveFixtures(),
-    getFixturesByDate(today),
-  ]);
+  const events = await getEventsByDate(today);
 
-  // Deduplicate by fixture id
-  const fixtureMap = new Map<number, AFFixture>();
-  for (const f of [...liveFixtures, ...todayFixtures]) {
-    fixtureMap.set(f.fixture.id, f);
-  }
-
-  if (fixtureMap.size === 0) {
-    console.log("  No fixtures to process today.");
+  if (events.length === 0) {
+    console.log("  No WC events today.");
     return result;
   }
 
-  // Load our DB matches by apiFootballId
-  const afIds = Array.from(fixtureMap.keys());
+  // Build lookup by sportsDbId
+  const eventById = new Map<string, SDBEvent>(events.map((e) => [e.idEvent, e]));
+
+  // Load our DB matches for the events we just fetched
   const dbMatches = await prisma.match.findMany({
-    where: { apiFootballId: { in: afIds } },
+    where: { sportsDbId: { in: Array.from(eventById.keys()) } },
   });
 
-  const dbMatchByAfId = new Map(dbMatches.map((m) => [m.apiFootballId!, m]));
+  for (const dbMatch of dbMatches) {
+    const event = eventById.get(dbMatch.sportsDbId!);
+    if (!event) continue;
 
-  for (const [afId, fixture] of fixtureMap) {
-    const dbMatch = dbMatchByAfId.get(afId);
-    if (!dbMatch) continue;
-
-    const status = fixture.fixture.status;
     const wasCompleted = dbMatch.status === "completed";
 
     let newStatus: string;
-    if (isCompleted(status)) newStatus = "completed";
-    else if (isLive(status)) newStatus = "live";
+    if (isCompleted(event.strStatus)) newStatus = "completed";
+    else if (isLive(event.strStatus)) newStatus = "live";
     else newStatus = "upcoming";
 
-    const newHome = fixture.goals.home;
-    const newAway = fixture.goals.away;
-    const newMinute = isLive(status) ? minuteLabel(status) : null;
+    const newHome = isCompleted(event.strStatus) ? parseScore(event.intHomeScore) : dbMatch.homeScore;
+    const newAway = isCompleted(event.strStatus) ? parseScore(event.intAwayScore) : dbMatch.awayScore;
 
-    // Determine knockout winner for non-group matches completing now
-    let newKnockoutWinner: string | null = null;
-    if (newStatus === "completed" && dbMatch.stage !== "group") {
-      newKnockoutWinner = resolveKnockoutWinner(fixture);
+    // Determine knockout winner for non-group matches that just completed
+    let newKnockoutWinner: string | null = dbMatch.knockoutWinner;
+    if (newStatus === "completed" && !wasCompleted && dbMatch.stage !== "group") {
+      newKnockoutWinner = resolveKnockoutWinner(event);
     }
 
     // Skip if nothing changed
@@ -166,7 +169,6 @@ export async function syncMatches(): Promise<SyncResult> {
       dbMatch.status === newStatus &&
       dbMatch.homeScore === newHome &&
       dbMatch.awayScore === newAway &&
-      dbMatch.minute === newMinute &&
       dbMatch.knockoutWinner === newKnockoutWinner
     ) {
       continue;
@@ -178,7 +180,8 @@ export async function syncMatches(): Promise<SyncResult> {
         status: newStatus,
         homeScore: newHome,
         awayScore: newAway,
-        minute: newMinute,
+        // Clear minute when no longer live (TheSportsDB free doesn't provide it)
+        minute: newStatus === "live" ? dbMatch.minute : null,
         knockoutWinner: newKnockoutWinner,
       },
     });
@@ -234,41 +237,4 @@ async function scorePredictions(
   }
 
   return predictions.length;
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Determine the winner of a knockout match from an API-Football fixture.
- *
- * - If one team scored more goals (regular time or AET): that side wins.
- * - If status is "PEN" and goals are level: the side with more penalty goals wins.
- * Returns null if the winner cannot be determined (shouldn't happen in a completed knockout).
- */
-function resolveKnockoutWinner(fixture: AFFixture): string | null {
-  const homeGoals = fixture.goals.home ?? 0;
-  const awayGoals = fixture.goals.away ?? 0;
-
-  if (homeGoals > awayGoals) return "home";
-  if (awayGoals > homeGoals) return "away";
-
-  // Scores level — check penalty shootout
-  const homePen = fixture.score?.penalty?.home ?? null;
-  const awayPen = fixture.score?.penalty?.away ?? null;
-
-  if (homePen !== null && awayPen !== null) {
-    if (homePen > awayPen) return "home";
-    if (awayPen > homePen) return "away";
-  }
-
-  console.warn("  ⚠ Could not determine knockout winner for fixture", fixture.fixture.id);
-  return null;
-}
-
-function shiftDate(dateStr: string, days: number): string {
-  const d = new Date(dateStr);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
 }

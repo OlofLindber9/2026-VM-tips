@@ -239,6 +239,7 @@ export default function PredictionForm({
   const isGroup = match.stage === "group";
   const isFinal = match.stage === "final";
   const isKnockout = !isGroup; // r32 / r16 / qf / sf / 3p / final
+  const isTeamTBD = match.homeTeam.id === "TBD" || match.awayTeam.id === "TBD";
 
   function handleGroupChange(groupId: string) {
     setSelectedGroup(groupId);
@@ -461,8 +462,14 @@ export default function PredictionForm({
         </div>
       )}
 
-      {/* Locked view */}
-      {isLocked && existing ? (
+      {/* TBD teams — predictions not yet open */}
+      {isTeamTBD ? (
+        <div className="text-center py-5 space-y-1">
+          <p className="text-sm font-semibold text-white/50">Lagen är ännu inte fastslagna</p>
+          <p className="text-xs text-white/30">Tipsningen öppnar när matchens lag är klara</p>
+        </div>
+      ) : /* Locked view */
+      isLocked && existing ? (
         <>
           {isGroup && <LockedScoreView pred={existing} />}
           {isFinal && <LockedFinalView pred={existing} />}
