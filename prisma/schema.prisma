@@ -42,6 +42,11 @@ model Match {
   minute         String?  // current match minute, e.g. "45+2" — only set when live
   apiFootballId  Int?     @unique // fixture id from api-football.com for syncing
   knockoutWinner String?  // "home" | "away" — who won after full match (incl. ET/PEN); knockout stages only
+  // Bracket linkage — only set for knockout matches.
+  // When this match completes, the winning team becomes the home/away slot of `nextMatch`.
+  bracketCode    String?  @unique // stable identifier within the bracket: "R32-1", "R16-1", "QF-1", "SF-1", "F", "3P"
+  nextMatchCode  String?  // bracketCode of the match the winner advances into (null for final/3p)
+  nextMatchSlot  String?  // "home" | "away" — which slot of the next match this winner fills
   predictions Prediction[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -79,17 +84,24 @@ model GroupMembership {
 
 // Scoring (stage-dependent):
 //   Group stage:  3 pts — exact score | 1 pt — correct result | 0 — wrong result
-//   Knockout:     2 pts — correct winner (no score prediction)
-//   Final:        5 pts — correct 90-min score + correct final winner | 2 pts — correct winner only | 0 — wrong
+//   Knockout:     2 pts — correct winning team (predict the team, not the side)
+//   Final:        5 pts — correct winning team + exact 90-min score
+//                 3 pts — correct winning team only
+//                 0 pts — wrong winning team
+//
+// Cascading penalty: knockout predictions store the predicted winning *team* (FIFA code).
+// If the team is eliminated earlier, the prediction scores 0 automatically because that
+// team won't be in the match at all — no special logic required.
 model Prediction {
-  id              String   @id @default(cuid())
-  userId          String   // User.id
-  matchId         String
-  groupId         String
-  predictedHome   Int?     // null for knockout (non-final) predictions
-  predictedAway   Int?     // null for knockout (non-final) predictions
-  predictedWinner String?  // "home" | "away" — for knockout + final predictions
-  score           Int?     // null until match is complete and scored
+  id                    String   @id @default(cuid())
+  userId                String   // User.id
+  matchId               String
+  groupId               String
+  predictedHome         Int?     // null for knockout (non-final) predictions
+  predictedAway         Int?     // null for knockout (non-final) predictions
+  predictedWinner       String?  // legacy "home"|"away" — kept for any pre-existing data
+  predictedWinnerTeamId String?  // FIFA code of the team the user predicts will win — knockouts + final
+  score                 Int?     // null until match is complete and scored
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   match         Match    @relation(fields: [matchId], references: [id])

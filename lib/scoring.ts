@@ -7,15 +7,17 @@
  *   0 pts — fel utfall
  *
  * Slutspel exkl. final (r32 / r16 / qf / sf / 3p):
- *   2 pts — rätt vinnare
- *   0 pts — fel vinnare
- *   (inga mål tippas — bara vem som vinner matchen)
+ *   2 pts — rätt vinnande lag (man tippar laget, inte sidan)
+ *   0 pts — fel vinnare (eller laget redan utslaget — kaskadbestraffning)
  *
  * Final:
- *   5 pts — rätt vinnare av turneringen OCH rätt resultat efter 90 min
- *   2 pts — rätt vinnare av turneringen (fel eller ej tippat 90-min resultat)
+ *   5 pts — rätt vinnande lag av turneringen OCH exakt rätt 90-min-resultat
+ *   3 pts — rätt vinnande lag av turneringen
  *   0 pts — fel vinnare
- *   (resultatet efter 90 min = vanlig tid; vinnaren bestäms efter hela matchen inkl. förlängning / straffar)
+ *
+ * Kaskadbestraffning (knockouts): predictions store the predicted winning TEAM
+ * (FIFA code). If the team is eliminated earlier, it can't appear in the
+ * later match — the team-ID compare automatically yields 0 for those rounds.
  */
 
 export type MatchResult = "home" | "draw" | "away";
@@ -38,52 +40,66 @@ export function calculateGroupScore(
   return 0;
 }
 
-/** Knockout non-final: 2 pts correct winner, 0 wrong. */
+/**
+ * Knockout (non-final): 2 pts if predicted team won, else 0.
+ *
+ * `predictedTeamId` is the FIFA code the user picked (e.g. "ESP").
+ * `actualWinnerTeamId` is the FIFA code of whichever team won the actual match.
+ * If the predicted team isn't even in the match (eliminated earlier), the IDs
+ * won't match and the score is 0 — that's the cascading penalty.
+ */
 export function calculateKnockoutScore(
-  predictedWinner: string,
-  actualWinner: string
+  predictedTeamId: string,
+  actualWinnerTeamId: string
 ): 0 | 2 {
-  return predictedWinner === actualWinner ? 2 : 0;
+  return predictedTeamId === actualWinnerTeamId ? 2 : 0;
 }
 
 /**
- * Final: 5 pts if correct 90-min score AND correct overall winner.
- *        2 pts if correct overall winner only.
- *        0 pts if wrong overall winner.
+ * Final: 5 pts if correct winner + exact 90-min score. 3 pts if correct winner only.
+ *        0 pts if wrong winner.
  */
 export function calculateFinalScore(
+  predictedTeamId: string,
   predictedHome: number,
   predictedAway: number,
   actual90Home: number,
   actual90Away: number,
-  predictedWinner: string,
-  actualWinner: string
-): 0 | 2 | 5 {
-  if (predictedWinner !== actualWinner) return 0;
+  actualWinnerTeamId: string
+): 0 | 3 | 5 {
+  if (predictedTeamId !== actualWinnerTeamId) return 0;
   const exactScore =
     predictedHome === actual90Home && predictedAway === actual90Away;
-  return exactScore ? 5 : 2;
+  return exactScore ? 5 : 3;
+}
+
+/**
+ * Resolve "home" / "away" knockoutWinner into the actual team's FIFA code.
+ */
+export function actualWinnerTeamId(
+  knockoutWinner: string | null,
+  homeTeamId: string,
+  awayTeamId: string
+): string | null {
+  if (knockoutWinner === "home") return homeTeamId;
+  if (knockoutWinner === "away") return awayTeamId;
+  return null;
 }
 
 /**
  * Main entry point called by sync when scoring predictions.
  *
- * @param stage         Match stage ("group" | "r32" | "r16" | "qf" | "sf" | "3p" | "final")
- * @param predictedHome Predicted home goals (null for knockout non-final)
- * @param predictedAway Predicted away goals (null for knockout non-final)
- * @param predictedWinner "home" | "away" (null for group-stage)
- * @param actual90Home  Actual home goals at 90 min
- * @param actual90Away  Actual away goals at 90 min
- * @param knockoutWinner Who won the match after ET/PEN ("home" | "away" | null for group)
+ * For knockouts the prediction is a team ID, compared to the actual winning
+ * team. For group-stage it's a score. For the final it's both.
  */
 export function calculateScore(
   stage: string,
   predictedHome: number | null,
   predictedAway: number | null,
-  predictedWinner: string | null,
+  predictedWinnerTeamId: string | null,
   actual90Home: number,
   actual90Away: number,
-  knockoutWinner: string | null
+  actualWinnerTeamId: string | null
 ): number {
   if (stage === "group") {
     if (predictedHome === null || predictedAway === null) return 0;
@@ -91,11 +107,25 @@ export function calculateScore(
   }
 
   if (stage === "final") {
-    if (predictedHome === null || predictedAway === null || !predictedWinner || !knockoutWinner) return 0;
-    return calculateFinalScore(predictedHome, predictedAway, actual90Home, actual90Away, predictedWinner, knockoutWinner);
+    if (
+      predictedHome === null ||
+      predictedAway === null ||
+      !predictedWinnerTeamId ||
+      !actualWinnerTeamId
+    ) {
+      return 0;
+    }
+    return calculateFinalScore(
+      predictedWinnerTeamId,
+      predictedHome,
+      predictedAway,
+      actual90Home,
+      actual90Away,
+      actualWinnerTeamId
+    );
   }
 
   // All other knockout stages (r32, r16, qf, sf, 3p)
-  if (!predictedWinner || !knockoutWinner) return 0;
-  return calculateKnockoutScore(predictedWinner, knockoutWinner);
+  if (!predictedWinnerTeamId || !actualWinnerTeamId) return 0;
+  return calculateKnockoutScore(predictedWinnerTeamId, actualWinnerTeamId);
 }

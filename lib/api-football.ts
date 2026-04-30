@@ -11,7 +11,9 @@
 
 const BASE_URL = "https://v3.football.api-sports.io";
 const WC_LEAGUE = 1;
-const WC_SEASON = 2026;
+const WC_SEASON = process.env.API_FOOTBALL_SEASON
+  ? parseInt(process.env.API_FOOTBALL_SEASON)
+  : 2026;
 
 // ---------------------------------------------------------------------------
 // Types (subset of the full API-Football response we actually use)

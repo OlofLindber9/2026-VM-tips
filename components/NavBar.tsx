@@ -16,6 +16,7 @@ export default function NavBar({ user }: NavBarProps) {
   const links = [
     { href: "/dashboard", label: "Hem",         icon: "🏠" },
     { href: "/matcher",   label: "Matcher",      icon: "⚽" },
+    { href: "/bracket",   label: "Slutspel",     icon: "🏆" },
     { href: "/groups",    label: "Mina grupper", icon: "👥" },
     { href: "/regler",    label: "Regler",       icon: "📋" },
   ];

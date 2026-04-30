@@ -10,7 +10,9 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
-    "db:seed": "npx tsx prisma/seed.ts"
+    "db:seed": "npx tsx prisma/seed.ts",
+    "db:seed:knockout": "npx tsx prisma/seed-knockout.ts",
+    "db:seed:test-bracket": "npx tsx prisma/seed-test-bracket.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

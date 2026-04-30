@@ -7,7 +7,8 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { calculateScore } from "@/lib/scoring";
+import { calculateScore, actualWinnerTeamId as resolveWinnerTeamId } from "@/lib/scoring";
+import { propagateBracketWinners } from "@/lib/bracket";
 import {
   getAllFixtures,
   getFixturesByDate,
@@ -191,11 +192,18 @@ export async function syncMatches(): Promise<SyncResult> {
       const scored = await scorePredictions(
         dbMatch.id,
         dbMatch.stage,
+        dbMatch.homeTeamId,
+        dbMatch.awayTeamId,
         newHome,
         newAway,
         newKnockoutWinner
       );
       result.predictionsScored += scored;
+
+      // Knockout: propagate the winning team into the next match's slot
+      if (dbMatch.stage !== "group" && newKnockoutWinner) {
+        await propagateBracketWinners(dbMatch.id);
+      }
     }
   }
 
@@ -206,9 +214,11 @@ export async function syncMatches(): Promise<SyncResult> {
 // Prediction scoring
 // ---------------------------------------------------------------------------
 
-async function scorePredictions(
+export async function scorePredictions(
   matchId: string,
   stage: string,
+  homeTeamId: string,
+  awayTeamId: string,
   homeScore: number,
   awayScore: number,
   knockoutWinner: string | null
@@ -217,15 +227,20 @@ async function scorePredictions(
     where: { matchId, score: null },
   });
 
+  // Resolve "home"/"away" → actual winning team's FIFA code (null for group)
+  const winnerTeamId = stage === "group"
+    ? null
+    : resolveWinnerTeamId(knockoutWinner, homeTeamId, awayTeamId);
+
   for (const prediction of predictions) {
     const pts = calculateScore(
       stage,
       prediction.predictedHome,
       prediction.predictedAway,
-      prediction.predictedWinner,
+      prediction.predictedWinnerTeamId,
       homeScore,
       awayScore,
-      knockoutWinner
+      winnerTeamId
     );
     await prisma.prediction.update({
       where: { id: prediction.id },

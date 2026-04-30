@@ -44,7 +44,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
             members: { orderBy: { joinedAt: "asc" } },
             predictions: {
               where: { matchId: id },
-              select: { userId: true, groupId: true, predictedHome: true, predictedAway: true, predictedWinner: true, score: true },
+              select: { userId: true, groupId: true, predictedHome: true, predictedAway: true, predictedWinner: true, predictedWinnerTeamId: true, score: true },
             },
           },
         },
@@ -274,6 +274,8 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
           isCompleted={isCompleted}
           isKnockout={isKnockout}
           hasScore={hasScore}
+          homeTeamId={match.homeTeam.id}
+          awayTeamId={match.awayTeam.id}
           homeTeamName={match.homeTeam.name}
           awayTeamName={match.awayTeam.name}
         />
@@ -330,6 +332,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
             predictedHome: p.predictedHome,
             predictedAway: p.predictedAway,
             predictedWinner: p.predictedWinner,
+            predictedWinnerTeamId: p.predictedWinnerTeamId,
             score: p.score,
           }))}
           locked={isLive || isPast || groupStageLocked}
@@ -457,6 +460,7 @@ type MemberTip = {
     predictedHome: number | null;
     predictedAway: number | null;
     predictedWinner: string | null;
+    predictedWinnerTeamId: string | null;
     score: number | null;
   } | null;
   currentPoints: number | null;
@@ -474,6 +478,8 @@ function GroupTipsSection({
   isCompleted,
   isKnockout,
   hasScore,
+  homeTeamId,
+  awayTeamId,
   homeTeamName,
   awayTeamName,
 }: {
@@ -482,6 +488,8 @@ function GroupTipsSection({
   isCompleted: boolean;
   isKnockout: boolean;
   hasScore: boolean;
+  homeTeamId: string;
+  awayTeamId: string;
   homeTeamName: string;
   awayTeamName: string;
 }) {
@@ -525,8 +533,16 @@ function GroupTipsSection({
                 let tipLabel: string | null = null;
                 if (pred) {
                   if (isKnockout) {
-                    if (pred.predictedWinner === "home") tipLabel = homeTeamName;
-                    else if (pred.predictedWinner === "away") tipLabel = awayTeamName;
+                    // Map predicted team ID to a display label. If the picked
+                    // team isn't in this match (cascade miss), show the team
+                    // code with a hint.
+                    const tid = pred.predictedWinnerTeamId;
+                    if (tid) {
+                      tipLabel =
+                        tid === homeTeamId ? homeTeamName
+                        : tid === awayTeamId ? awayTeamName
+                        : `${tid} ✗`;
+                    }
                   } else if (pred.predictedHome !== null && pred.predictedAway !== null) {
                     tipLabel = `${pred.predictedHome} – ${pred.predictedAway}`;
                   }

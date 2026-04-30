@@ -18,6 +18,7 @@ interface ExistingPrediction {
   predictedHome: number | null;
   predictedAway: number | null;
   predictedWinner: string | null;
+  predictedWinnerTeamId: string | null;
   score: number | null;
 }
 
@@ -88,6 +89,20 @@ const MAX_PTS: Record<string, string> = {
   "3p": "2 p",
   final: "5 p",
 };
+
+// Map a team ID stored in a prediction back to the side ("home"/"away") in
+// THIS match — used to highlight the active toggle. Returns null if the
+// predicted team isn't in this match (cascade miss).
+function sideForTeamId(
+  teamId: string | null,
+  homeTeamId: string,
+  awayTeamId: string
+): "home" | "away" | null {
+  if (!teamId) return null;
+  if (teamId === homeTeamId) return "home";
+  if (teamId === awayTeamId) return "away";
+  return null;
+}
 
 // ---------------------------------------------------------------------------
 // Shared sub-components
@@ -227,7 +242,12 @@ export default function PredictionForm({
 
   const [homeVal, setHomeVal] = useState(initial?.predictedHome ?? 0);
   const [awayVal, setAwayVal] = useState(initial?.predictedAway ?? 0);
-  const [winnerVal, setWinnerVal] = useState<string | null>(initial?.predictedWinner ?? null);
+  // Winner toggle state is a SIDE ("home"/"away") for UX — gets mapped to a
+  // team ID at submit time. We seed it from the predictedWinnerTeamId of any
+  // existing prediction.
+  const [winnerVal, setWinnerVal] = useState<string | null>(
+    sideForTeamId(initial?.predictedWinnerTeamId ?? null, match.homeTeam.id, match.awayTeam.id)
+  );
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -245,7 +265,9 @@ export default function PredictionForm({
     const pred = getInitial(groupId);
     setHomeVal(pred?.predictedHome ?? 0);
     setAwayVal(pred?.predictedAway ?? 0);
-    setWinnerVal(pred?.predictedWinner ?? null);
+    setWinnerVal(
+      sideForTeamId(pred?.predictedWinnerTeamId ?? null, match.homeTeam.id, match.awayTeam.id)
+    );
     setSuccess(false);
     setError("");
   }
@@ -268,15 +290,21 @@ export default function PredictionForm({
       groupId: selectedGroup,
     };
 
+    // Map "home"/"away" side back to the team ID for knockout submissions
+    const winnerTeamId =
+      winnerVal === "home" ? match.homeTeam.id
+      : winnerVal === "away" ? match.awayTeam.id
+      : null;
+
     if (isGroup) {
       body.predictedHome = homeVal;
       body.predictedAway = awayVal;
     } else if (isFinal) {
       body.predictedHome = homeVal;
       body.predictedAway = awayVal;
-      body.predictedWinner = winnerVal;
+      body.predictedWinnerTeamId = winnerTeamId;
     } else {
-      body.predictedWinner = winnerVal;
+      body.predictedWinnerTeamId = winnerTeamId;
     }
 
     const res = await fetch("/api/predictions", {
@@ -324,10 +352,31 @@ export default function PredictionForm({
   }
 
   function LockedWinnerView({ pred }: { pred: ExistingPrediction }) {
-    const winner = pred.predictedWinner;
-    if (!winner) return null;
-    const colors = WINNER_COLORS[winner as "home" | "away"];
-    const teamName = winner === "home" ? match.homeTeam.name : match.awayTeam.name;
+    const teamId = pred.predictedWinnerTeamId;
+    if (!teamId) return null;
+    const side = sideForTeamId(teamId, match.homeTeam.id, match.awayTeam.id);
+
+    // Cascade miss: predicted team isn't in this match anymore (eliminated earlier).
+    if (!side) {
+      return (
+        <div
+          className="flex items-center justify-center gap-3 p-4 rounded-xl border"
+          style={{ background: "rgba(239,68,68,0.08)", borderColor: "rgba(239,68,68,0.30)" }}
+        >
+          <div className="text-center">
+            <p className="text-xs font-bold uppercase tracking-widest mb-0.5 text-red-300/70">
+              Tippad vinnare ({teamId})
+            </p>
+            <p className="text-sm text-red-300">
+              Laget är redan utslaget — 0 p
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    const colors = WINNER_COLORS[side];
+    const teamName = side === "home" ? match.homeTeam.name : match.awayTeam.name;
     return (
       <div
         className="flex items-center justify-center gap-3 p-4 rounded-xl border"
@@ -384,7 +433,7 @@ export default function PredictionForm({
     if (isFinal) {
       return (
         <p className="text-[11px] text-white/35 text-center mt-2">
-          Rätt vinnare = 2 p &nbsp;·&nbsp; Rätt vinnare + exakt 90-min = 5 p
+          Rätt vinnare = 3 p &nbsp;·&nbsp; Rätt vinnare + exakt 90-min = 5 p
         </p>
       );
     }
@@ -555,11 +604,15 @@ export default function PredictionForm({
                   {match.awayTeam.name}
                 </p>
               )}
-              {isKnockout && !isFinal && existing.predictedWinner && (
+              {isKnockout && !isFinal && existing.predictedWinnerTeamId && (
                 <p className="text-sm text-white/80">
                   Vinnare:{" "}
                   <span className="font-bold text-white">
-                    {existing.predictedWinner === "home" ? match.homeTeam.name : match.awayTeam.name}
+                    {existing.predictedWinnerTeamId === match.homeTeam.id
+                      ? match.homeTeam.name
+                      : existing.predictedWinnerTeamId === match.awayTeam.id
+                      ? match.awayTeam.name
+                      : `${existing.predictedWinnerTeamId} (utslaget — 0 p)`}
                   </span>
                 </p>
               )}
@@ -568,9 +621,13 @@ export default function PredictionForm({
                   {existing.predictedHome !== null && existing.predictedAway !== null
                     ? `${existing.predictedHome}–${existing.predictedAway} efter 90 min`
                     : ""}
-                  {existing.predictedWinner && (
+                  {existing.predictedWinnerTeamId && (
                     <> · Vinnare: <span className="font-bold text-white">
-                      {existing.predictedWinner === "home" ? match.homeTeam.name : match.awayTeam.name}
+                      {existing.predictedWinnerTeamId === match.homeTeam.id
+                        ? match.homeTeam.name
+                        : existing.predictedWinnerTeamId === match.awayTeam.id
+                        ? match.awayTeam.name
+                        : `${existing.predictedWinnerTeamId} (utslaget — 0 p)`}
                     </span></>
                   )}
                 </p>
