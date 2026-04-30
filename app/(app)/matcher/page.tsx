@@ -142,6 +142,10 @@ type MatchCardMatch = {
 };
 
 
+function teamDisplay(id: string, name: string): string {
+  return id === "TBD" ? "Okänt lag" : name;
+}
+
 function MatchCard({ match, hasTipped }: { match: MatchCardMatch; hasTipped: boolean }) {
   const isLive = match.status === "live";
   const isCompleted = match.status === "completed";
@@ -149,6 +153,7 @@ function MatchCard({ match, hasTipped }: { match: MatchCardMatch; hasTipped: boo
   const hasScore = (isLive || isCompleted) && match.homeScore !== null && match.awayScore !== null;
   const result = hasScore ? getResult(match.homeScore!, match.awayScore!) : null;
   const isKnockout = match.stage !== "group";
+  const isTeamTBD = match.homeTeam.id === "TBD" || match.awayTeam.id === "TBD";
 
   const homeWon = isKnockout
     ? match.knockoutWinner === "home"
@@ -197,9 +202,14 @@ function MatchCard({ match, hasTipped }: { match: MatchCardMatch; hasTipped: boo
           )}
 
           {/* Knockout tip hint */}
-          {isKnockout && !isLive && !isCompleted && (
+          {isKnockout && !isLive && !isCompleted && !isTeamTBD && (
             <span className="text-[10px] font-bold tracking-widest uppercase text-app-gold/60">
               Tippa vinnare
+            </span>
+          )}
+          {isTeamTBD && !isLive && !isCompleted && (
+            <span className="text-[10px] font-bold tracking-widest uppercase text-white/25">
+              Lag ej klart
             </span>
           )}
         </div>
@@ -209,9 +219,9 @@ function MatchCard({ match, hasTipped }: { match: MatchCardMatch; hasTipped: boo
       <div className="flex items-center gap-3">
         {/* Home team */}
         <span
-          className={`flex-1 text-right font-semibold truncate ${homeWon ? "text-white" : "text-white/70"}`}
+          className={`flex-1 text-right font-semibold truncate ${isTeamTBD ? "text-white/30 italic" : homeWon ? "text-white" : "text-white/70"}`}
         >
-          {match.homeTeam.name}{" "}
+          {teamDisplay(match.homeTeam.id, match.homeTeam.name)}{" "}
           <span className="not-italic">{teamFlag(match.homeTeam.id)}</span>
         </span>
 
@@ -237,10 +247,10 @@ function MatchCard({ match, hasTipped }: { match: MatchCardMatch; hasTipped: boo
 
         {/* Away team */}
         <span
-          className={`flex-1 text-left font-semibold truncate ${awayWon ? "text-white" : "text-white/70"}`}
+          className={`flex-1 text-left font-semibold truncate ${isTeamTBD ? "text-white/30 italic" : awayWon ? "text-white" : "text-white/70"}`}
         >
           <span className="not-italic">{teamFlag(match.awayTeam.id)}</span>{" "}
-          {match.awayTeam.name}
+          {teamDisplay(match.awayTeam.id, match.awayTeam.name)}
         </span>
       </div>
 
