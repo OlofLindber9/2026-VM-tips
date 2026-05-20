@@ -40,6 +40,11 @@ model Match {
   homeScore      Int?     // null until played
   awayScore      Int?     // null until played
   minute         String?  // current match minute, e.g. "45+2" — only set when live
+  halftimeHomeScore Int?
+  halftimeAwayScore Int?
+  liveEvents     Json?
+  liveStats      Json?
+  apiFootballId  Int?     @unique // fixture id from API-Football for live sync
   sportsDbId     String?  @unique // event id from TheSportsDB for syncing
   knockoutWinner String?  // "home" | "away" — who won after full match (incl. ET/PEN); knockout stages only
   // Bracket linkage — only set for knockout matches.

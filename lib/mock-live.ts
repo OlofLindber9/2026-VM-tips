@@ -11,6 +11,8 @@
  *   Events: Away goal 23', Home goal 38', Home penalty 61', Away yellow 70'
  */
 
+import type { AFEvent, AFTeamStatistics } from "@/lib/api-football";
+
 // Injected match state (overrides DB values when mock is active)
 export const MOCK_MATCH_OVERRIDE = {
   status: "live" as const,
@@ -92,6 +94,56 @@ export const MOCK_STATS: MockStats = {
   offsides: { home: 2, away: 4 },
   yellowCards: { home: 1, away: 2 },
 };
+
+export function parseEvents(events: AFEvent[], homeTeamId: number): MockEvent[] {
+  return events
+    .filter((event) => event.type === "Goal" || event.type === "Card" || event.type === "Subst")
+    .map((event) => ({
+      minute: event.time.elapsed,
+      extra: event.time.extra,
+      side: event.team.id === homeTeamId ? "home" : "away",
+      player: event.player.name,
+      assist: event.assist?.name ?? null,
+      type: event.type as MockEvent["type"],
+      detail: event.detail,
+    }));
+}
+
+export function parseStats(stats: AFTeamStatistics[]): MockStats | null {
+  if (stats.length < 2) return null;
+
+  const home = stats[0].statistics;
+  const away = stats[1].statistics;
+
+  return {
+    possession: statPair(home, away, "Ball Possession"),
+    shotsOnGoal: statPair(home, away, "Shots on Goal"),
+    totalShots: statPair(home, away, "Total Shots"),
+    corners: statPair(home, away, "Corner Kicks"),
+    fouls: statPair(home, away, "Fouls"),
+    offsides: statPair(home, away, "Offsides"),
+    yellowCards: statPair(home, away, "Yellow Cards"),
+  };
+}
+
+function statPair(
+  home: AFTeamStatistics["statistics"],
+  away: AFTeamStatistics["statistics"],
+  type: string
+): { home: number; away: number } {
+  return {
+    home: statValue(home, type),
+    away: statValue(away, type),
+  };
+}
+
+function statValue(stats: AFTeamStatistics["statistics"], type: string): number {
+  const raw = stats.find((entry) => entry.type === type)?.value;
+  if (typeof raw === "number") return raw;
+  if (typeof raw !== "string") return 0;
+  const parsed = parseInt(raw.replace("%", ""), 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
 // ---------------------------------------------------------------------------
 // Apply mock override to a list of matches (server-side only)

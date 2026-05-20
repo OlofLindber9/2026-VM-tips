@@ -13,7 +13,6 @@ export default async function DashboardPage() {
   const [
     upcomingMatchesRaw,
     memberships,
-    recentPredictions,
     groupMatchCount,
     groupPredictedMatches,
     knockoutMatchCount,
@@ -43,19 +42,13 @@ export default async function DashboardPage() {
       take: 5,
       orderBy: { joinedAt: "desc" },
     }),
-    prisma.prediction.findMany({
-      where: { userId, score: { not: null } },
-      include: { match: { include: { homeTeam: true, awayTeam: true } } },
-      orderBy: { updatedAt: "desc" },
-      take: 5,
-    }),
     prisma.match.count({ where: { stage: "group" } }),
     prisma.prediction.findMany({
       where: { userId, match: { stage: "group" } },
       select: { matchId: true },
       distinct: ["matchId"],
     }),
-    prisma.match.count({ where: { stage: { not: "group" }, status: "upcoming" } }),
+    prisma.match.count({ where: { stage: { not: "group" } } }),
     prisma.prediction.findMany({
       where: { userId, match: { stage: { not: "group" } } },
       select: { matchId: true },
@@ -352,23 +345,6 @@ export default async function DashboardPage() {
           </div>
         )}
       </div>
-
-      {/* Recent scored predictions */}
-      {recentPredictions.length > 0 && (
-        <div className="glass-card">
-          <h2 className="font-bold text-white mb-4">Senaste poäng</h2>
-          <div className="space-y-2">
-            {recentPredictions.map((p) => (
-              <div key={p.id} className="flex items-center justify-between text-sm">
-                <span className="text-white/70">
-                  {p.match.homeTeam.name} {teamFlag(p.match.homeTeam.id)} vs {teamFlag(p.match.awayTeam.id)} {p.match.awayTeam.name}
-                </span>
-                <span className="font-bold text-app-accent">{p.score} pts</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

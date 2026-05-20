@@ -37,7 +37,18 @@ export default async function RacesPage() {
   const upcoming = matches.filter((m) => m.status === "upcoming" && m.scheduledAt >= now);
   const past = matches.filter((m) => m.status === "completed" || (m.status === "upcoming" && m.scheduledAt < now));
 
-  const hasKnockout = matches.some((m) => m.stage !== "group");
+  const groupMatches = matches.filter((m) => m.stage === "group");
+  const knockoutMatches = matches.filter((m) => m.stage !== "group");
+  const hasKnockout = knockoutMatches.length > 0;
+  const groupStageFinished =
+    groupMatches.length > 0 && groupMatches.every((m) => m.status === "completed");
+  const knockoutHasStarted = knockoutMatches.some(
+    (m) => m.status === "live" || m.status === "completed" || m.scheduledAt <= now
+  );
+  const showKnockoutDeadlineNotice =
+    groupStageFinished &&
+    knockoutMatches.some((m) => m.status === "upcoming" && m.scheduledAt > now) &&
+    !knockoutHasStarted;
 
   return (
     <div className="space-y-8">
@@ -53,8 +64,8 @@ export default async function RacesPage() {
         </div>
       )}
 
-      {/* Knockout tip deadline notice — shown when knockout matches exist but haven't started */}
-      {hasKnockout && upcoming.some((m) => m.stage !== "group") && (
+      {/* Knockout tip deadline notice — shown after groups finish and before the first knockout starts */}
+      {showKnockoutDeadlineNotice && (
         <div
           className="rounded-xl px-4 py-3 flex items-start gap-3 text-sm"
           style={{ background: "rgba(245,200,66,0.08)", border: "1px solid rgba(245,200,66,0.2)" }}

@@ -12,7 +12,7 @@
  *   5. Prints what LiveMatchDetails would actually receive
  */
 
-import { getFixtureById, type AFFixture, type AFEvent, type AFTeamStatistics } from "../lib/api-football";
+import { getFixtureById, type AFFixture, type AFTeamStatistics } from "../lib/api-football";
 import { parseEvents, parseStats } from "../lib/mock-live";
 
 const API_KEY = process.env.API_FOOTBALL_KEY;

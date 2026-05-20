@@ -81,6 +81,10 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
   const isKnockout = match.stage !== "group";
   const groupStageLocked = match.stage === "group" && now >= TOURNAMENT_START;
   const isTeamTBD = match.homeTeam.id === "TBD" || match.awayTeam.id === "TBD";
+  const msUntilKickoff = match.scheduledAt.getTime() - now.getTime();
+  const shouldPollLiveState =
+    isLive ||
+    (!isCompleted && msUntilKickoff <= 30 * 60 * 1000 && msUntilKickoff >= -4 * 60 * 60 * 1000);
 
   function teamName(id: string, name: string) {
     return id === "TBD" ? "Okänt lag" : name;
@@ -98,8 +102,14 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
       liveEvents = MOCK_EVENTS;
       liveStats = MOCK_STATS;
       halftime = MOCK_HALFTIME;
+    } else {
+      liveEvents = readLiveEvents(match.liveEvents);
+      liveStats = readLiveStats(match.liveStats);
+      halftime =
+        match.halftimeHomeScore !== null && match.halftimeAwayScore !== null
+          ? { home: match.halftimeHomeScore, away: match.halftimeAwayScore }
+          : null;
     }
-    // TheSportsDB free tier does not provide live events or statistics.
   }
 
   const showLiveDetails = (liveEvents !== null) && (liveEvents.length > 0 || liveStats !== null);
@@ -157,8 +167,8 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
-      {/* Auto-refresh every 30s while live */}
-      {isLive && <LiveRefresh intervalMs={30_000} />}
+      {/* Client polling reads our app/DB, not API-Football directly. */}
+      {shouldPollLiveState && <LiveRefresh intervalMs={15_000} />}
 
       {/* Match header */}
       <div
@@ -596,4 +606,13 @@ function GroupTipsSection({
       </div>
     </div>
   );
+}
+
+function readLiveEvents(value: unknown): MockEvent[] {
+  return Array.isArray(value) ? (value as MockEvent[]) : [];
+}
+
+function readLiveStats(value: unknown): MockStats | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as MockStats;
 }

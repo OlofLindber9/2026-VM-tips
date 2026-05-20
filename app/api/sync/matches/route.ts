@@ -5,9 +5,9 @@
  * Call this from an external cron service (e.g. Vercel Cron, GitHub Actions,
  * cron-job.org) on whatever interval you need:
  *
- *   - Pre-tournament:  once per day (just to keep fixtures up-to-date)
- *   - Match days:      every 60 seconds while matches are live
- *   - Between matches: every 5 minutes
+ *   - POST /api/sync/matches?mode=window every 5 minutes
+ *   - POST /api/sync/matches?mode=live every 15 seconds on match days
+ *   - POST /api/sync/matches once per day before the tournament
  *
  * Security: requires the Authorization header to match SYNC_SECRET env var.
  *
@@ -17,7 +17,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { syncMatches } from "@/lib/sync";
+import { syncMatches, type SyncMode } from "@/lib/sync";
 
 export async function POST(request: Request) {
   // Verify secret
@@ -32,12 +32,19 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await syncMatches();
+    const mode = syncModeFromRequest(request);
+    const result = await syncMatches({ mode });
     console.log("[sync] Result:", result);
-    return NextResponse.json({ ok: true, ...result });
+    return NextResponse.json({ ok: true, mode, ...result });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[sync] Error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+function syncModeFromRequest(request: Request): SyncMode {
+  const mode = new URL(request.url).searchParams.get("mode");
+  if (mode === "live" || mode === "window" || mode === "auto") return mode;
+  return "auto";
 }

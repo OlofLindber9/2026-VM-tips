@@ -4,15 +4,27 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 /**
- * Silently refreshes the page every `intervalMs` milliseconds.
- * Only mounted when a match is live so we get live score updates.
+ * Silently refreshes server-rendered match data while the match is near/live.
+ * This hits our own Next app and DB. It does not call API-Football from the browser.
  */
 export default function LiveRefresh({ intervalMs = 30_000 }: { intervalMs?: number }) {
   const router = useRouter();
 
   useEffect(() => {
-    const id = setInterval(() => router.refresh(), intervalMs);
-    return () => clearInterval(id);
+    const refresh = () => {
+      if (document.visibilityState === "visible") router.refresh();
+    };
+
+    const id = setInterval(refresh, intervalMs);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") router.refresh();
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [router, intervalMs]);
 
   return null;
