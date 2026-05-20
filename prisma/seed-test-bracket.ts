@@ -177,7 +177,7 @@ async function main() {
   console.log("=== Test bracket seed ===\n");
 
   console.log("Step 1: Re-seeding knockout bracket structure …");
-  await seedKnockoutBracket();
+  await seedKnockoutBracket({ useDemoPairings: true });
   console.log("");
 
   console.log("Step 2: Ensuring test user and group …");

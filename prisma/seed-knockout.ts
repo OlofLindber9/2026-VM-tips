@@ -1,9 +1,9 @@
 /**
  * Knockout-bracket seed.
  *
- * Builds a complete WC 2026 knockout tree (R32 → R16 → QF → SF → Final + 3P)
- * using a hypothetical group-stage outcome so the bracket can be exercised
- * end-to-end while the real groups are still being played.
+ * Builds a production-safe WC 2026 knockout tree (R32 → R16 → QF → SF →
+ * Final + 3P) using placeholder slots. Real teams are filled by the live sync
+ * once the actual knockout fixtures are known.
  *
  * Each match gets a stable `bracketCode` ("R32-1", "R16-1", "QF-1", "SF-1",
  * "F", "3P") so subsequent rounds can reference it via `nextMatchCode` and
@@ -17,34 +17,35 @@
  * Run: npx tsx prisma/seed-knockout.ts
  */
 
+import * as nextEnv from "@next/env";
 import { PrismaClient } from "@prisma/client";
 
+nextEnv.loadEnvConfig(process.cwd());
 const prisma = new PrismaClient();
 
-// ---------------------------------------------------------------------------
-// Hypothetical R32 matchups — pretend each group's top 2 + best 3rd-placed
-// teams produced this set of pairings. These use real seeded teams so the
-// matchups feel concrete.
-// ---------------------------------------------------------------------------
+type SeedKnockoutOptions = {
+  useDemoPairings?: boolean;
+};
 
-// 32 teams total — picked so every team appears exactly once
-const R32_PAIRINGS: { home: string; away: string }[] = [
-  { home: "BRA", away: "HAI" },  // R32-1
-  { home: "ARG", away: "JOR" },  // R32-2
-  { home: "FRA", away: "CIV" },  // R32-3
-  { home: "ENG", away: "NZL" },  // R32-4
-  { home: "ESP", away: "PAN" },  // R32-5
-  { home: "GER", away: "EGY" },  // R32-6
-  { home: "POR", away: "TUR" },  // R32-7
-  { home: "NED", away: "PAR" },  // R32-8
-  { home: "BEL", away: "RSA" },  // R32-9
-  { home: "CRO", away: "TUN" },  // R32-10
-  { home: "URU", away: "AUS" },  // R32-11
-  { home: "COL", away: "JPN" },  // R32-12
-  { home: "MAR", away: "IRN" },  // R32-13
-  { home: "SUI", away: "ECU" },  // R32-14
-  { home: "USA", away: "MEX" },  // R32-15
-  { home: "SEN", away: "KOR" },  // R32-16
+// Demo-only R32 pairings used by prisma/seed-test-bracket.ts. The default
+// production seed uses TBD placeholders instead.
+const DEMO_R32_PAIRINGS: { home: string; away: string }[] = [
+  { home: "BRA", away: "HAI" },
+  { home: "ARG", away: "JOR" },
+  { home: "FRA", away: "CIV" },
+  { home: "ENG", away: "NZL" },
+  { home: "ESP", away: "PAN" },
+  { home: "GER", away: "EGY" },
+  { home: "POR", away: "TUR" },
+  { home: "NED", away: "PAR" },
+  { home: "BEL", away: "RSA" },
+  { home: "CRO", away: "TUN" },
+  { home: "URU", away: "AUS" },
+  { home: "COL", away: "JPN" },
+  { home: "MAR", away: "IRN" },
+  { home: "SUI", away: "ECU" },
+  { home: "USA", away: "MEX" },
+  { home: "SEN", away: "KOR" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -77,29 +78,29 @@ function dayOffset(days: number, hourUtc = 18): Date {
   return d;
 }
 
-function placeholderTeamId(roundCode: string, num: number): string {
-  return `TBD-${roundCode}-${num}`;
+function placeholderTeamId(roundCode: string, num: number, slot?: "HOME" | "AWAY"): string {
+  return slot ? `TBD-${roundCode}-${num}-${slot}` : `TBD-${roundCode}-${num}`;
 }
 
-function buildEdges(): BracketEdge[] {
+function buildEdges(options: SeedKnockoutOptions = {}): BracketEdge[] {
   const edges: BracketEdge[] = [];
 
-  // R32: 16 matches, real teams
-  R32_PAIRINGS.forEach((p, i) => {
-    const num = i + 1;
+  // R32: 16 matches, unknown teams until the group stage is complete.
+  for (let num = 1; num <= 16; num++) {
+    const demoPairing = options.useDemoPairings ? DEMO_R32_PAIRINGS[num - 1] : null;
     const r16Slot = Math.ceil(num / 2);            // R32-1+R32-2 → R16-1, etc.
     const slot: "home" | "away" = num % 2 === 1 ? "home" : "away";
     edges.push({
       bracketCode: `R32-${num}`,
       stage: "r32",
       matchNumber: 100 + num,
-      homeTeamId: p.home,
-      awayTeamId: p.away,
+      homeTeamId: demoPairing?.home ?? placeholderTeamId("R32", num, "HOME"),
+      awayTeamId: demoPairing?.away ?? placeholderTeamId("R32", num, "AWAY"),
       nextMatchCode: `R16-${r16Slot}`,
       nextMatchSlot: slot,
-      daysFromStart: 19 + Math.floor(i / 4),       // June 30 … July 3
+      daysFromStart: 19 + Math.floor((num - 1) / 4), // June 30 … July 3
     });
-  });
+  }
 
   // R16: 8 matches, placeholder teams
   for (let num = 1; num <= 8; num++) {
@@ -185,7 +186,11 @@ function buildEdges(): BracketEdge[] {
 
 async function ensurePlaceholderTeams() {
   const placeholders: { id: string; name: string }[] = [];
-  for (let i = 1; i <= 16; i++) placeholders.push({ id: `TBD-R32-${i}`, name: `Vinnare R32-${i}` });
+  for (let i = 1; i <= 16; i++) {
+    placeholders.push({ id: `TBD-R32-${i}-HOME`, name: `Lagplats R32-${i}` });
+    placeholders.push({ id: `TBD-R32-${i}-AWAY`, name: `Lagplats R32-${i}` });
+    placeholders.push({ id: `TBD-R32-${i}`, name: `Vinnare R32-${i}` });
+  }
   for (let i = 1; i <= 8; i++)  placeholders.push({ id: `TBD-R16-${i}`, name: `Vinnare R16-${i}` });
   for (let i = 1; i <= 4; i++)  placeholders.push({ id: `TBD-QF-${i}`,  name: `Vinnare QF-${i}` });
   for (let i = 1; i <= 2; i++)  placeholders.push({ id: `TBD-SF-${i}`,  name: `Vinnare SF-${i}` });
@@ -206,7 +211,7 @@ async function ensurePlaceholderTeams() {
 // Main
 // ---------------------------------------------------------------------------
 
-export async function seedKnockoutBracket() {
+export async function seedKnockoutBracket(options: SeedKnockoutOptions = {}) {
   console.log("Seeding knockout bracket …");
 
   const placeholderCount = await ensurePlaceholderTeams();
@@ -232,7 +237,7 @@ export async function seedKnockoutBracket() {
   });
   console.log(`  ✓ Cleared ${wiped.count} old knockout matches`);
 
-  const edges = buildEdges();
+  const edges = buildEdges(options);
 
   for (const e of edges) {
     await prisma.match.create({
@@ -257,6 +262,10 @@ export async function seedKnockoutBracket() {
   }
   console.log(`  ✓ ${edges.length} knockout matches created`);
   console.log("Done.");
+}
+
+export async function disconnectKnockoutSeedPrisma() {
+  await prisma.$disconnect();
 }
 
 if (require.main === module) {

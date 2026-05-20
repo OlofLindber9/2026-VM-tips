@@ -133,15 +133,6 @@ export async function getBracket(
   // *implicitly* expects to be in this match, given their previous-round picks.
   const expectedTeamsByMatch = computeExpectedTeams(matches, predByMatch);
 
-  const placeholderIds = new Set([
-    ...Array.from({ length: 16 }, (_, i) => `TBD-R32-${i + 1}`),
-    ...Array.from({ length: 8 }, (_, i) => `TBD-R16-${i + 1}`),
-    ...Array.from({ length: 4 }, (_, i) => `TBD-QF-${i + 1}`),
-    ...Array.from({ length: 2 }, (_, i) => `TBD-SF-${i + 1}`),
-    "TBD-F",
-    "TBD-3P",
-  ]);
-
   const rounds: Record<KnockoutStage, BracketNode[]> = {
     r32: [], r16: [], qf: [], sf: [], "3p": [], final: [],
   };
@@ -152,8 +143,8 @@ export async function getBracket(
   for (const m of matches) {
     if (!isKnockoutStage(m.stage)) continue;
 
-    const homeIsPlaceholder = placeholderIds.has(m.homeTeamId);
-    const awayIsPlaceholder = placeholderIds.has(m.awayTeamId);
+    const homeIsPlaceholder = isPlaceholderTeamId(m.homeTeamId);
+    const awayIsPlaceholder = isPlaceholderTeamId(m.awayTeamId);
     const homeTeam: BracketTeam | null = homeIsPlaceholder
       ? null
       : { id: m.homeTeam.id, name: m.homeTeam.name };
@@ -173,7 +164,7 @@ export async function getBracket(
     if (pred) {
       const expected = expectedTeamsByMatch.get(m.id);
       const teamsActuallyInMatch = new Set(
-        [m.homeTeamId, m.awayTeamId].filter((id) => !placeholderIds.has(id))
+        [m.homeTeamId, m.awayTeamId].filter((id) => !isPlaceholderTeamId(id))
       );
       const cascadeMiss =
         m.status !== "completed" &&
@@ -301,18 +292,9 @@ export async function propagateBracketWinners(matchId: string): Promise<void> {
   });
   if (!next) return;
 
-  // Don't overwrite a slot that's already a real team
-  const placeholderIds = new Set([
-    ...Array.from({ length: 16 }, (_, i) => `TBD-R32-${i + 1}`),
-    ...Array.from({ length: 8 }, (_, i) => `TBD-R16-${i + 1}`),
-    ...Array.from({ length: 4 }, (_, i) => `TBD-QF-${i + 1}`),
-    ...Array.from({ length: 2 }, (_, i) => `TBD-SF-${i + 1}`),
-    "TBD-F", "TBD-3P",
-  ]);
-
   const slotField = m.nextMatchSlot === "home" ? "homeTeamId" : "awayTeamId";
   const currentSlotTeamId = m.nextMatchSlot === "home" ? next.homeTeamId : next.awayTeamId;
-  if (!placeholderIds.has(currentSlotTeamId) && currentSlotTeamId !== winnerTeamId) return;
+  if (!isPlaceholderTeamId(currentSlotTeamId) && currentSlotTeamId !== winnerTeamId) return;
 
   await prisma.match.update({
     where: { id: next.id },
@@ -323,6 +305,10 @@ export async function propagateBracketWinners(matchId: string): Promise<void> {
   // `nextMatchCode = "3P"` (slot home/away) on the SF matches via a
   // mirror entry — but to keep the schema small, callers can pass the
   // SF loser through here too if needed.
+}
+
+function isPlaceholderTeamId(teamId: string): boolean {
+  return teamId === "TBD" || teamId.startsWith("TBD-");
 }
 
 // ---------------------------------------------------------------------------
