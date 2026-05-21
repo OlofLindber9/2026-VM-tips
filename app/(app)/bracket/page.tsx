@@ -55,7 +55,7 @@ export default async function BracketPage({
         <div>
           <h1 className="text-2xl font-bold text-white">Slutspelsträd</h1>
           <p className="mt-1 text-sm text-white/50">
-            Tippa hela vägen till finalen. Kaskadbestraffning gäller om ditt lag åker ut tidigt.
+            Tippa hela vägen till finalen.
           </p>
         </div>
       </div>

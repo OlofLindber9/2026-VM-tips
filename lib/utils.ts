@@ -38,6 +38,14 @@ export function formatWithTime(date: Date): string {
   }).format(new Date(date));
 }
 
+export function liveMinuteLabel(minute: string | null): string {
+  if (!minute) return "";
+  const value = minute.trim();
+  if (!value) return "";
+  if (/^\d+(?:\+\d+)?$/.test(value)) return `${value}'`;
+  return value;
+}
+
 export function stageLabel(stage: string): string {
   switch (stage) {
     case "group":  return "Gruppspel";

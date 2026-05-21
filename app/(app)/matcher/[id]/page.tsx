@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { formatWithTime, stageLabel, teamFlag, TOURNAMENT_START } from "@/lib/utils";
+import { formatWithTime, liveMinuteLabel, stageLabel, teamFlag, TOURNAMENT_START } from "@/lib/utils";
 import {
   MOCK_EVENTS,
   MOCK_STATS,
@@ -184,7 +184,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
           {isLive && (
             <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.1em] uppercase text-red-400">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-              Live {match.minute && `· ${match.minute}'`}
+              Live{match.minute && ` · ${liveMinuteLabel(match.minute)}`}
             </span>
           )}
           {isCompleted && (

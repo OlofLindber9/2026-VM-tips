@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { format, stageLabel, stageColor, teamFlag } from "@/lib/utils";
+import { format, liveMinuteLabel, stageLabel, stageColor, teamFlag } from "@/lib/utils";
 import { getResult } from "@/lib/scoring";
 import { applyMockIfEnabled } from "@/lib/mock-live";
 
@@ -208,7 +208,7 @@ function MatchCard({ match, hasTipped }: { match: MatchCardMatch; hasTipped: boo
           {isLive && (
             <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.1em] uppercase text-red-400">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-              Live {match.minute && `· ${match.minute}'`}
+              Live{match.minute && ` · ${liveMinuteLabel(match.minute)}`}
             </span>
           )}
 

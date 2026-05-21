@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { format, teamFlag } from "@/lib/utils";
+import { format, liveMinuteLabel, teamFlag } from "@/lib/utils";
 import TournamentCountdown from "@/components/TournamentCountdown";
 import { applyMockIfEnabled } from "@/lib/mock-live";
 
@@ -362,7 +362,7 @@ export default async function DashboardPage() {
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <span className="flex items-center gap-1 text-[11px] font-bold tracking-[0.1em] uppercase text-red-400">
                         <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                        Live{m.minute && ` · ${m.minute}'`}
+                        Live{m.minute && ` · ${liveMinuteLabel(m.minute)}`}
                       </span>
                       {hasScore && (
                         <span className="text-sm font-black tabular-nums text-white/80">

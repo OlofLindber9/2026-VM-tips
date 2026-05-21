@@ -55,7 +55,7 @@ const HEADERS = [
   "prediction_id",
 ];
 
-async function main() {
+export async function main() {
   const outPath = outputPathFromArgs();
   const predictionsOnly = process.argv.includes("--predictions-only");
 
@@ -177,7 +177,7 @@ async function main() {
   console.log(`Saved to ${outPath}`);
 }
 
-function outputPathFromArgs(): string {
+export function outputPathFromArgs(): string {
   const outIndex = process.argv.indexOf("--out");
   if (outIndex >= 0) {
     const explicitPath = process.argv[outIndex + 1];
@@ -189,7 +189,7 @@ function outputPathFromArgs(): string {
   return path.resolve("backups", `predictions-${stamp}.csv`);
 }
 
-function emptyPredictionRow(
+export function emptyPredictionRow(
   user: { id: string; displayName: string; email: string },
   userGroupsByUserId: Map<string, string[]>
 ): CsvValue[] {
@@ -217,7 +217,7 @@ function emptyPredictionRow(
   ];
 }
 
-function predictionText(
+export function predictionText(
   prediction: ExportPrediction,
   teamsById: Map<string, string>
 ): string {
@@ -242,7 +242,7 @@ function predictionText(
   return `${winnerName} wins`;
 }
 
-function actualResultText(
+export function actualResultText(
   prediction: ExportPrediction,
   teamsById: Map<string, string>
 ): string {
@@ -257,7 +257,7 @@ function actualResultText(
   return `${score}, winner ${winner}`;
 }
 
-function legacyWinnerTeamId(
+export function legacyWinnerTeamId(
   side: string | null,
   homeTeamId: string,
   awayTeamId: string
@@ -267,7 +267,7 @@ function legacyWinnerTeamId(
   return null;
 }
 
-function stageLabel(stage: string): string {
+export function stageLabel(stage: string): string {
   switch (stage) {
     case "group": return "Group stage";
     case "r32": return "Round of 32";
@@ -280,23 +280,25 @@ function stageLabel(stage: string): string {
   }
 }
 
-function formatUtc(date: Date): string {
-  return date.toISOString().replace("T", " ").replace(".000Z", " UTC");
+export function formatUtc(date: Date): string {
+  return date.toISOString().replace("T", " ").replace(/\.\d{3}Z$/, " UTC");
 }
 
-function toCsv(rows: CsvValue[][]): string {
+export function toCsv(rows: CsvValue[][]): string {
   return `${rows.map((row) => row.map(csvEscape).join(",")).join("\n")}\n`;
 }
 
-function csvEscape(value: CsvValue): string {
+export function csvEscape(value: CsvValue): string {
   const text = value === null || value === undefined ? "" : String(value);
   if (/[",\n\r]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
   return text;
 }
 
-main()
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  })
-  .finally(() => prisma.$disconnect());
+if (require.main === module) {
+  main()
+    .catch((error) => {
+      console.error(error);
+      process.exit(1);
+    })
+    .finally(() => prisma.$disconnect());
+}
