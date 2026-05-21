@@ -104,7 +104,7 @@ export default async function BracketPage({
         <div>
           <p className="mb-1 text-[11px] font-bold uppercase tracking-widest text-white/40">Förlorade</p>
           <p className="text-2xl font-black tabular-nums text-red-400/80">{bracket.userPointsLost}</p>
-          <p className="text-[10px] uppercase tracking-wider text-white/35">Kaskad / fel</p>
+          <p className="text-[10px] uppercase tracking-wider text-white/35">fel</p>
         </div>
       </div>
 
