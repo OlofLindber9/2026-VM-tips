@@ -14,9 +14,7 @@ export default async function DashboardPage() {
     upcomingMatchesRaw,
     memberships,
     groupMatchCount,
-    groupPredictedMatches,
     knockoutMatchCount,
-    knockoutPredictedRaw,
   ] = await Promise.all([
     prisma.match.findMany({
       where: {
@@ -39,32 +37,13 @@ export default async function DashboardPage() {
           },
         },
       },
-      take: 5,
       orderBy: { joinedAt: "desc" },
     }),
     prisma.match.count({ where: { stage: "group" } }),
-    prisma.prediction.findMany({
-      where: { userId, match: { stage: "group" } },
-      select: { matchId: true },
-      distinct: ["matchId"],
-    }),
     prisma.match.count({ where: { stage: { not: "group" } } }),
-    prisma.prediction.findMany({
-      where: { userId, match: { stage: { not: "group" } } },
-      select: { matchId: true },
-      distinct: ["matchId"],
-    }),
   ]);
 
   const upcomingMatches = applyMockIfEnabled(upcomingMatchesRaw);
-
-  const groupPredictedCount = groupPredictedMatches.length;
-  const knockoutPredictedCount = knockoutPredictedRaw.length;
-  const groupPct = groupMatchCount > 0 ? Math.round((groupPredictedCount / groupMatchCount) * 100) : 0;
-  const knockoutPct = knockoutMatchCount > 0 ? Math.round((knockoutPredictedCount / knockoutMatchCount) * 100) : 0;
-  const groupDone = groupMatchCount > 0 && groupPredictedCount >= groupMatchCount;
-  const knockoutDone = knockoutMatchCount > 0 && knockoutPredictedCount >= knockoutMatchCount;
-
   const isInGroup = memberships.length > 0;
 
   // ---------------------------------------------------------------------------
@@ -73,8 +52,18 @@ export default async function DashboardPage() {
 
   const groupIds = memberships.map((m) => m.groupId);
 
-  const [groupScores, memberUsers] = groupIds.length > 0
+  const [groupPredictionCounts, knockoutPredictionCounts, groupScores, memberUsers] = groupIds.length > 0
     ? await Promise.all([
+        prisma.prediction.groupBy({
+          by: ["groupId"],
+          where: { userId, groupId: { in: groupIds }, match: { stage: "group" } },
+          _count: { _all: true },
+        }),
+        prisma.prediction.groupBy({
+          by: ["groupId"],
+          where: { userId, groupId: { in: groupIds }, match: { stage: { not: "group" } } },
+          _count: { _all: true },
+        }),
         prisma.prediction.groupBy({
           by: ["userId", "groupId"],
           where: { groupId: { in: groupIds } },
@@ -93,7 +82,39 @@ export default async function DashboardPage() {
           select: { id: true, displayName: true },
         }),
       ])
-    : [[], []];
+    : [[], [], [], []];
+
+  const groupPredictionCountByGroupId = new Map(
+    groupPredictionCounts.map((row) => [row.groupId, row._count._all])
+  );
+  const knockoutPredictionCountByGroupId = new Map(
+    knockoutPredictionCounts.map((row) => [row.groupId, row._count._all])
+  );
+
+  const tipStatusByGroup = memberships.map((membership) => {
+    const groupPredictedCount = groupPredictionCountByGroupId.get(membership.groupId) ?? 0;
+    const knockoutPredictedCount = knockoutPredictionCountByGroupId.get(membership.groupId) ?? 0;
+    const groupPct = groupMatchCount > 0 ? Math.round((groupPredictedCount / groupMatchCount) * 100) : 0;
+    const knockoutPct = knockoutMatchCount > 0 ? Math.round((knockoutPredictedCount / knockoutMatchCount) * 100) : 0;
+    const groupDone = groupMatchCount > 0 && groupPredictedCount >= groupMatchCount;
+    const knockoutDone = knockoutMatchCount > 0 && knockoutPredictedCount >= knockoutMatchCount;
+
+    return {
+      groupId: membership.groupId,
+      groupName: membership.group.name,
+      groupPredictedCount,
+      knockoutPredictedCount,
+      groupPct,
+      knockoutPct,
+      groupDone,
+      knockoutDone,
+      allDone: groupDone && (knockoutMatchCount === 0 || knockoutDone),
+    };
+  });
+
+  const hasOpenPredictions = tipStatusByGroup.some(
+    (status) => !status.groupDone || (knockoutMatchCount > 0 && !status.knockoutDone)
+  );
 
   const userNameMap = Object.fromEntries(memberUsers.map((u) => [u.id, u.displayName]));
 
@@ -138,51 +159,64 @@ export default async function DashboardPage() {
       {/* Prediction progress — only shown when user is in at least one group */}
       {isInGroup && groupMatchCount > 0 && (
         <div className="glass-card space-y-4">
-          <h2 className="font-bold text-white">Din tipsstatus</h2>
-
-          {/* Group stage progress */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-white/60 font-medium">Gruppspel</span>
-              <span className={`font-bold tabular-nums ${groupDone ? "text-app-ice" : "text-white/70"}`}>
-                {groupPredictedCount} / {groupMatchCount}
-                {groupDone && <span className="ml-1.5 text-[11px] font-black uppercase tracking-widest">Klart ✓</span>}
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-bold text-white">Din tipsstatus</h2>
+            {tipStatusByGroup.length > 1 && (
+              <span className="text-xs font-semibold uppercase tracking-widest text-white/35">
+                {tipStatusByGroup.length} grupper
               </span>
-            </div>
-            <ProgressBar pct={groupPct} done={groupDone} />
-            {!groupDone && (
-              <p className="text-xs text-white/50">
-                {groupMatchCount - groupPredictedCount} match{groupMatchCount - groupPredictedCount !== 1 ? "er" : ""} kvar att tippa innan VM startar
-              </p>
             )}
           </div>
 
-          {/* Knockout progress — only shown when knockout matches exist */}
-          {knockoutMatchCount > 0 && (
-            <div className="space-y-2 pt-3 border-t border-white/8">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-white/60 font-medium">Slutspel</span>
-                <span className={`font-bold tabular-nums ${knockoutDone ? "text-app-ice" : "text-white/70"}`}>
-                  {knockoutPredictedCount} / {knockoutMatchCount}
-                  {knockoutDone && <span className="ml-1.5 text-[11px] font-black uppercase tracking-widest">Klart ✓</span>}
-                </span>
-              </div>
-              <ProgressBar pct={knockoutPct} done={knockoutDone} accent="gold" />
-              {!knockoutDone && (
-                <p className="text-xs text-white/50">
-                  {knockoutMatchCount - knockoutPredictedCount} match{knockoutMatchCount - knockoutPredictedCount !== 1 ? "er" : ""} kvar — tippa innan slutspelet startar
-                </p>
-              )}
-            </div>
-          )}
+          <div className="divide-y divide-white/8">
+            {tipStatusByGroup.map((status) => (
+              <div key={status.groupId} className="py-4 first:pt-0 last:pb-0">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <Link
+                    href={`/groups/${status.groupId}`}
+                    className="min-w-0 truncate text-sm font-bold text-white hover:text-app-ice transition-colors"
+                  >
+                    {status.groupName}
+                  </Link>
+                  {status.allDone && (
+                    <span className="shrink-0 text-[11px] font-black uppercase tracking-widest text-app-ice">
+                      Klart ✓
+                    </span>
+                  )}
+                </div>
 
-          {/* CTA if not done */}
-          {(!groupDone || (knockoutMatchCount > 0 && !knockoutDone)) && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <PredictionStageProgress
+                    label="Gruppspel"
+                    predictedCount={status.groupPredictedCount}
+                    totalCount={groupMatchCount}
+                    pct={status.groupPct}
+                    done={status.groupDone}
+                    remainingSuffix="kvar att tippa i gruppspelet"
+                  />
+
+                  {knockoutMatchCount > 0 && (
+                    <PredictionStageProgress
+                      label="Slutspel"
+                      predictedCount={status.knockoutPredictedCount}
+                      totalCount={knockoutMatchCount}
+                      pct={status.knockoutPct}
+                      done={status.knockoutDone}
+                      accent="gold"
+                      remainingSuffix="kvar att tippa i slutspelet"
+                    />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {hasOpenPredictions && (
             <Link
               href="/matcher"
               className="btn-primary block w-full text-center text-sm mt-4"
             >
-              {!groupDone ? "Tippa gruppspel →" : "Tippa slutspel →"}
+              Tippa matcher →
             </Link>
           )}
         </div>
@@ -345,6 +379,45 @@ export default async function DashboardPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function PredictionStageProgress({
+  label,
+  predictedCount,
+  totalCount,
+  pct,
+  done,
+  accent = "green",
+  remainingSuffix,
+}: {
+  label: string;
+  predictedCount: number;
+  totalCount: number;
+  pct: number;
+  done: boolean;
+  accent?: "green" | "gold";
+  remainingSuffix: string;
+}) {
+  const remaining = Math.max(totalCount - predictedCount, 0);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <span className="text-white/60 font-medium">{label}</span>
+        <span className={`font-bold tabular-nums ${done ? "text-app-ice" : "text-white/70"}`}>
+          {predictedCount} / {totalCount}
+        </span>
+      </div>
+      <ProgressBar pct={pct} done={done} accent={accent} />
+      {done ? (
+        <p className="text-xs font-semibold text-app-ice/75">Klart i den här gruppen</p>
+      ) : (
+        <p className="text-xs text-white/50">
+          {remaining} match{remaining !== 1 ? "er" : ""} {remainingSuffix}
+        </p>
+      )}
     </div>
   );
 }

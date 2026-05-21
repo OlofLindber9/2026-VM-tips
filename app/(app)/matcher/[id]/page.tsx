@@ -166,7 +166,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
   }));
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+    <div className="gyokeres-background-page space-y-6 max-w-2xl mx-auto">
       {/* Client polling reads our app/DB, not API-Football directly. */}
       {shouldPollLiveState && <LiveRefresh intervalMs={15_000} />}
 

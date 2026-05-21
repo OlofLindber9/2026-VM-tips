@@ -38,7 +38,7 @@ export default async function BracketPage({
 
   if (totalKnockoutMatches === 0) {
     return (
-      <div className="space-y-6">
+      <div className="gyokeres-background-page space-y-6">
         <h1 className="text-2xl font-bold text-white">Slutspelsträd</h1>
         <div className="glass-card text-center py-12">
           <div className="text-4xl mb-3">🏆</div>
@@ -50,7 +50,7 @@ export default async function BracketPage({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="gyokeres-background-page space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Slutspelsträd</h1>

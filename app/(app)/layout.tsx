@@ -13,12 +13,9 @@ export default async function AppLayout({
   const displayName = session.user?.name || session.user?.email?.split("@")[0] || "Spelare";
 
   return (
-    <div
-      className="min-h-screen flex flex-col overflow-x-hidden"
-      style={{
-        background: "linear-gradient(160deg, #040d08 0%, #091a10 45%, #0f2d1a 100%)",
-      }}
-    >
+    <div className="app-shell min-h-screen flex flex-col overflow-x-hidden">
+      <div className="app-background-image fixed inset-0 pointer-events-none" aria-hidden="true" />
+
       {/* Subtle horizontal pitch lines */}
       <div
         className="fixed inset-0 pointer-events-none opacity-[0.03]"
