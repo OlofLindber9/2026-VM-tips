@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { isPlaceholderTeamId } from "@/lib/utils";
 
 const KNOCKOUT_STAGES = new Set(["r32", "r16", "qf", "sf", "3p", "final"]);
 
@@ -32,6 +33,8 @@ export async function POST(request: Request) {
   const isKnockout = KNOCKOUT_STAGES.has(match.stage);
   const isFinal = match.stage === "final";
   const isGroup = match.stage === "group";
+  const hasPlaceholderTeam =
+    isPlaceholderTeamId(match.homeTeamId) || isPlaceholderTeamId(match.awayTeamId);
 
   // Validate fields per stage
   if (isGroup) {
@@ -44,6 +47,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Resultatet måste vara ett heltal mellan 0 och 99" }, { status: 400 });
     }
   } else if (isFinal) {
+    if (hasPlaceholderTeam) {
+      return NextResponse.json({ error: "Lagen är inte fastställda ännu" }, { status: 403 });
+    }
     if (predictedHome === undefined || predictedAway === undefined || !predictedWinnerTeamId) {
       return NextResponse.json({ error: "Ange resultat efter 90 min och vilket lag som vinner finalen" }, { status: 400 });
     }
@@ -56,6 +62,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Ogiltigt vinnande lag" }, { status: 400 });
     }
   } else if (isKnockout) {
+    if (hasPlaceholderTeam) {
+      return NextResponse.json({ error: "Lagen är inte fastställda ännu" }, { status: 403 });
+    }
     if (!predictedWinnerTeamId) {
       return NextResponse.json({ error: "Välj vilket lag du tror vinner matchen" }, { status: 400 });
     }
@@ -67,6 +76,9 @@ export async function POST(request: Request) {
   // Knockout: ensure the picked team actually exists in the tournament.
   // We accept any real team (cascading penalty handles the rest at scoring time).
   if (isKnockout && predictedWinnerTeamId) {
+    if (isPlaceholderTeamId(predictedWinnerTeamId)) {
+      return NextResponse.json({ error: "Lagen är inte fastställda ännu" }, { status: 400 });
+    }
     const team = await prisma.team.findUnique({ where: { id: predictedWinnerTeamId } });
     if (!team) {
       return NextResponse.json({ error: "Okänt lag" }, { status: 400 });

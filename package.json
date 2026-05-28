@@ -7,6 +7,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "test": "tsx --test tests/**/*.test.ts",
+    "test:db": "tsx --test tests/many-users.db-test.ts",
     "lint": "next lint",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",

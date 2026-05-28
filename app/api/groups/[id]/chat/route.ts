@@ -23,9 +23,10 @@ export async function GET(
 
   const messages = await prisma.chatMessage.findMany({
     where: { groupId },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "desc" },
     take: 200,
   });
+  messages.reverse();
 
   // Resolve display names
   const userIds = [...new Set(messages.map((m) => m.userId))];

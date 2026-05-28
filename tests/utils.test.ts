@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { liveMinuteLabel, stageColor, stageLabel, teamFlag } from "../lib/utils";
+import { isPlaceholderTeamId, liveMinuteLabel, stageColor, stageLabel, teamFlag } from "../lib/utils";
 
 describe("utils", () => {
   it("formats live minutes without double apostrophes", () => {
@@ -22,5 +22,13 @@ describe("utils", () => {
   it("returns known team flags and empty string for unknown ids", () => {
     assert.notEqual(teamFlag("SWE"), "");
     assert.equal(teamFlag("XXX"), "");
+  });
+
+  it("detects all seeded placeholder team ids", () => {
+    assert.equal(isPlaceholderTeamId("TBD"), true);
+    assert.equal(isPlaceholderTeamId("TBD-R32-1-HOME"), true);
+    assert.equal(isPlaceholderTeamId("TBD-SF-2"), true);
+    assert.equal(isPlaceholderTeamId("SWE"), false);
+    assert.equal(isPlaceholderTeamId(null), false);
   });
 });

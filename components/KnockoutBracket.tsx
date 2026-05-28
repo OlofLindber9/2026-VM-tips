@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { stageLabel, teamFlag } from "@/lib/utils";
+import { isPlaceholderTeamId, stageLabel, teamFlag } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Layout constants
@@ -416,7 +416,7 @@ function MatchCard({
   isFinal: boolean;
   onPick: (w: "home" | "away") => void;
 }) {
-  const isTBD = match.homeTeam.id === "TBD" || match.awayTeam.id === "TBD";
+  const isTBD = isPlaceholderTeamId(match.homeTeam.id) || isPlaceholderTeamId(match.awayTeam.id);
   const isLocked = match.status !== "upcoming";
   const isCompleted = match.status === "completed";
   const canPick = !isTBD && !isLocked && !isSaving;
@@ -579,7 +579,7 @@ function FinalModal({
   onSave: (matchId: string, home: number, away: number, winner: "home" | "away") => Promise<void>;
   onClose: () => void;
 }) {
-  const isTBD = match.homeTeam.id === "TBD" || match.awayTeam.id === "TBD";
+  const isTBD = isPlaceholderTeamId(match.homeTeam.id) || isPlaceholderTeamId(match.awayTeam.id);
   const isLocked = match.status !== "upcoming";
 
   const [homeVal, setHomeVal] = useState(existingPred?.predictedHome ?? 0);
@@ -605,8 +605,8 @@ function FinalModal({
     setSaving(false);
   }
 
-  const homeName = match.homeTeam.id === "TBD" ? "Okänt lag" : match.homeTeam.name;
-  const awayName = match.awayTeam.id === "TBD" ? "Okänt lag" : match.awayTeam.name;
+  const homeName = isPlaceholderTeamId(match.homeTeam.id) ? "Okänt lag" : match.homeTeam.name;
+  const awayName = isPlaceholderTeamId(match.awayTeam.id) ? "Okänt lag" : match.awayTeam.name;
 
   return (
     <div
@@ -741,7 +741,7 @@ function FinalModal({
             </div>
 
             <p className="text-[11px] text-white/35 text-center">
-              Rätt vinnare = 2 p &nbsp;·&nbsp; Rätt vinnare + exakt 90-min = 5 p
+              Rätt vinnare = 3 p &nbsp;·&nbsp; Rätt vinnare + exakt 90-min = 5 p
             </p>
 
             {error && (

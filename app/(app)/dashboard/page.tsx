@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { format, liveMinuteLabel, teamFlag } from "@/lib/utils";
+import { format, isPlaceholderTeamId, liveMinuteLabel, teamFlag } from "@/lib/utils";
 import TournamentCountdown from "@/components/TournamentCountdown";
 import { applyMockIfEnabled } from "@/lib/mock-live";
 
@@ -121,6 +121,10 @@ export default async function DashboardPage() {
   function memberDisplayName(uid: string): string {
     if (uid === userId) return session!.user?.name || userNameMap[uid] || "Spelare";
     return userNameMap[uid] || "Deltagare";
+  }
+
+  function teamName(id: string, name: string): string {
+    return isPlaceholderTeamId(id) ? "Okänt lag" : name;
   }
 
   const standingsByGroup = memberships.map((membership) => {
@@ -352,7 +356,7 @@ export default async function DashboardPage() {
                 >
                   <div>
                     <div className="font-medium text-sm text-white/90">
-                      {m.homeTeam.name} {teamFlag(m.homeTeam.id)} vs {teamFlag(m.awayTeam.id)} {m.awayTeam.name}
+                      {teamName(m.homeTeam.id, m.homeTeam.name)} {teamFlag(m.homeTeam.id)} vs {teamFlag(m.awayTeam.id)} {teamName(m.awayTeam.id, m.awayTeam.name)}
                     </div>
                     <div className="text-xs text-white/40 mt-0.5">
                       {format(m.scheduledAt)} · {m.city}

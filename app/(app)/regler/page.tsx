@@ -105,7 +105,7 @@ export default function ReglerPage() {
             example="Tips: 1–1 / Argentina vinner  ·  Verkligt: 1–1 / Argentina vinner på straffar"
           />
           <RuleRow
-            pts={2}
+            pts={3}
             color="green"
             label="Rätt vinnare, men fel 90-min resultat"
             example="Tips: 2–0 / Argentina vinner  ·  Verkligt: 1–1 / Argentina vinner på straffar"
@@ -164,7 +164,7 @@ export default function ReglerPage() {
               <tr>
                 <td className="py-2.5 pr-4 text-white/60 align-top"></td>
                 <td className="py-2.5 pr-4 text-white/80">Rätt vinnare</td>
-                <td className="py-2.5 text-right font-bold" style={{ color: "rgb(110,231,183)" }}>2 p</td>
+                <td className="py-2.5 text-right font-bold" style={{ color: "rgb(110,231,183)" }}>3 p</td>
               </tr>
             </tbody>
           </table>

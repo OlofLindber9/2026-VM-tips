@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { formatWithTime, liveMinuteLabel, stageLabel, teamFlag, TOURNAMENT_START } from "@/lib/utils";
+import { formatWithTime, isPlaceholderTeamId, liveMinuteLabel, stageLabel, teamFlag, TOURNAMENT_START } from "@/lib/utils";
 import {
   MOCK_EVENTS,
   MOCK_STATS,
@@ -80,14 +80,14 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
   const hasScore = (isLive || isCompleted) && match.homeScore !== null && match.awayScore !== null;
   const isKnockout = match.stage !== "group";
   const groupStageLocked = match.stage === "group" && now >= TOURNAMENT_START;
-  const isTeamTBD = match.homeTeam.id === "TBD" || match.awayTeam.id === "TBD";
+  const isTeamTBD = isPlaceholderTeamId(match.homeTeam.id) || isPlaceholderTeamId(match.awayTeam.id);
   const msUntilKickoff = match.scheduledAt.getTime() - now.getTime();
   const shouldPollLiveState =
     isLive ||
     (!isCompleted && msUntilKickoff <= 30 * 60 * 1000 && msUntilKickoff >= -4 * 60 * 60 * 1000);
 
   function teamName(id: string, name: string) {
-    return id === "TBD" ? "Okänt lag" : name;
+    return isPlaceholderTeamId(id) ? "Okänt lag" : name;
   }
 
   // ---------------------------------------------------------------------------

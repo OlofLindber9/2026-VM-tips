@@ -24,7 +24,10 @@ export default async function BracketPage({
     orderBy: { joinedAt: "asc" },
   });
 
-  const selectedGroupId = params.group ?? memberships[0]?.group.id;
+  const requestedGroupId = params.group;
+  const selectedGroupId = memberships.some((m) => m.group.id === requestedGroupId)
+    ? requestedGroupId
+    : memberships[0]?.group.id;
   const bracket = await getBracket(userId, selectedGroupId);
   const clientRounds = serializeRounds(bracket.rounds);
 

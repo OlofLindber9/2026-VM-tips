@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getResult } from "@/lib/scoring";
+import { isPlaceholderTeamId } from "@/lib/utils";
 
 interface Team {
   id: string;
@@ -259,7 +260,7 @@ export default function PredictionForm({
   const isGroup = match.stage === "group";
   const isFinal = match.stage === "final";
   const isKnockout = !isGroup; // r32 / r16 / qf / sf / 3p / final
-  const isTeamTBD = match.homeTeam.id === "TBD" || match.awayTeam.id === "TBD";
+  const isTeamTBD = isPlaceholderTeamId(match.homeTeam.id) || isPlaceholderTeamId(match.awayTeam.id);
 
   function handleGroupChange(groupId: string) {
     setSelectedGroup(groupId);
@@ -427,7 +428,7 @@ export default function PredictionForm({
     if (isGroup) {
       return (
         <p className="text-[11px] text-white/35 text-center mt-2">
-          Rätt resultat = 1 p &nbsp;·&nbsp; Exakt rätt = 3 p
+          Rätt utfall = 1 p &nbsp;·&nbsp; Exakt rätt = 3 p
         </p>
       );
     }

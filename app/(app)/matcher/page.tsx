@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { format, liveMinuteLabel, stageLabel, stageColor, teamFlag } from "@/lib/utils";
+import { format, isPlaceholderTeamId, liveMinuteLabel, stageLabel, stageColor, teamFlag } from "@/lib/utils";
 import { getResult } from "@/lib/scoring";
 import { applyMockIfEnabled } from "@/lib/mock-live";
 
@@ -154,7 +154,7 @@ type MatchCardMatch = {
 
 
 function teamDisplay(id: string, name: string): string {
-  return id === "TBD" ? "Okänt lag" : name;
+  return isPlaceholderTeamId(id) ? "Okänt lag" : name;
 }
 
 function MatchCard({ match, hasTipped }: { match: MatchCardMatch; hasTipped: boolean }) {
@@ -164,7 +164,7 @@ function MatchCard({ match, hasTipped }: { match: MatchCardMatch; hasTipped: boo
   const hasScore = (isLive || isCompleted) && match.homeScore !== null && match.awayScore !== null;
   const result = hasScore ? getResult(match.homeScore!, match.awayScore!) : null;
   const isKnockout = match.stage !== "group";
-  const isTeamTBD = match.homeTeam.id === "TBD" || match.awayTeam.id === "TBD";
+  const isTeamTBD = isPlaceholderTeamId(match.homeTeam.id) || isPlaceholderTeamId(match.awayTeam.id);
 
   const homeWon = isKnockout
     ? match.knockoutWinner === "home"

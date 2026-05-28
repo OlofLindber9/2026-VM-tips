@@ -18,6 +18,10 @@ export function teamFlag(id: string): string {
   return FLAG[id] ?? "";
 }
 
+export function isPlaceholderTeamId(teamId: string | null | undefined): boolean {
+  return teamId === "TBD" || teamId?.startsWith("TBD-") === true;
+}
+
 export function format(date: Date): string {
   return new Intl.DateTimeFormat("sv-SE", {
     day: "numeric",

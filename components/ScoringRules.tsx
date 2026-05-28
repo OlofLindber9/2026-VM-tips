@@ -105,7 +105,7 @@ export default function ScoringRules({ defaultOpen = false }: Props) {
                 example="Tips: 1–1 / Arg vinner · Verkligt: 1–1 / Arg vinner på straffar"
               />
               <RuleRow
-                pts={2}
+                pts={3}
                 color="green"
                 label="Rätt vinnare, fel 90-min resultat"
                 example="Tips: 2–0 / Arg vinner · Verkligt: 1–1 / Arg vinner på straffar"

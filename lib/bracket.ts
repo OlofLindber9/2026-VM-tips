@@ -11,12 +11,13 @@
  * which slot to fill (`nextMatchSlot` = "home"|"away").  The Final and 3rd
  * Place have no `nextMatchCode`.
  *
- * `propagateBracketWinners` runs after a knockout match completes: it reads
- * the actual winner and writes it into the home/away slot of the next match,
- * unless that next match's slot already has a real (non-placeholder) team.
+ * `propagateBracketWinners` runs after a knockout match completes: it writes
+ * the actual winner into the next match, and for semifinals writes the loser
+ * into the bronze match. Existing real teams are not overwritten.
  */
 
 import { prisma } from "@/lib/prisma";
+import { isPlaceholderTeamId } from "@/lib/utils";
 import {
   calculateKnockoutScore,
   calculateFinalScore,
@@ -93,6 +94,12 @@ export type BracketTree = {
 // ---------------------------------------------------------------------------
 
 type BracketSlot = "home" | "away";
+
+export type BracketSlotUpdate = {
+  bracketCode: string;
+  slot: BracketSlot;
+  teamId: string;
+};
 
 /**
  * Fetch the bracket as a structured tree.
@@ -277,38 +284,84 @@ function computeExpectedTeams(
 export async function propagateBracketWinners(matchId: string): Promise<void> {
   const m = await prisma.match.findUnique({ where: { id: matchId } });
   if (!m) return;
-  if (!m.nextMatchCode || !m.nextMatchSlot) return;
-  if (!m.knockoutWinner) return;
 
+  const updates = bracketSlotUpdatesForCompletedMatch(m);
+  for (const update of updates) {
+    await fillBracketSlot(update);
+  }
+}
+
+export function bracketSlotUpdatesForCompletedMatch(match: {
+  stage: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  knockoutWinner: string | null;
+  nextMatchCode: string | null;
+  nextMatchSlot: string | null;
+}): BracketSlotUpdate[] {
+  if (match.knockoutWinner !== "home" && match.knockoutWinner !== "away") return [];
+
+  const nextMatchSlot = normalizeBracketSlot(match.nextMatchSlot);
+  const updates: BracketSlotUpdate[] = [];
   const winnerTeamId = actualWinnerTeamId(
-    m.knockoutWinner,
-    m.homeTeamId,
-    m.awayTeamId
+    match.knockoutWinner,
+    match.homeTeamId,
+    match.awayTeamId
   );
-  if (!winnerTeamId) return;
 
+  if (
+    winnerTeamId &&
+    !isPlaceholderTeamId(winnerTeamId) &&
+    match.nextMatchCode &&
+    nextMatchSlot
+  ) {
+    updates.push({
+      bracketCode: match.nextMatchCode,
+      slot: nextMatchSlot,
+      teamId: winnerTeamId,
+    });
+  }
+
+  if (match.stage === "sf" && nextMatchSlot) {
+    const thirdPlaceCode = thirdPlaceCodeForFinal(match.nextMatchCode);
+    const loserTeamId =
+      match.knockoutWinner === "home" ? match.awayTeamId : match.homeTeamId;
+    if (thirdPlaceCode && !isPlaceholderTeamId(loserTeamId)) {
+      updates.push({
+        bracketCode: thirdPlaceCode,
+        slot: nextMatchSlot,
+        teamId: loserTeamId,
+      });
+    }
+  }
+
+  return updates;
+}
+
+function normalizeBracketSlot(slot: string | null): BracketSlot | null {
+  return slot === "home" || slot === "away" ? slot : null;
+}
+
+function thirdPlaceCodeForFinal(finalCode: string | null): string | null {
+  if (finalCode === "F") return "3P";
+  if (finalCode?.endsWith("-F")) return finalCode.replace(/-F$/, "-3P");
+  return null;
+}
+
+async function fillBracketSlot(update: BracketSlotUpdate): Promise<void> {
   const next = await prisma.match.findUnique({
-    where: { bracketCode: m.nextMatchCode },
+    where: { bracketCode: update.bracketCode },
   });
   if (!next) return;
 
-  const slotField = m.nextMatchSlot === "home" ? "homeTeamId" : "awayTeamId";
-  const currentSlotTeamId = m.nextMatchSlot === "home" ? next.homeTeamId : next.awayTeamId;
-  if (!isPlaceholderTeamId(currentSlotTeamId) && currentSlotTeamId !== winnerTeamId) return;
+  const slotField = update.slot === "home" ? "homeTeamId" : "awayTeamId";
+  const currentSlotTeamId = update.slot === "home" ? next.homeTeamId : next.awayTeamId;
+  if (!isPlaceholderTeamId(currentSlotTeamId) && currentSlotTeamId !== update.teamId) return;
 
   await prisma.match.update({
     where: { id: next.id },
-    data: { [slotField]: winnerTeamId },
+    data: { [slotField]: update.teamId },
   });
-
-  // 3rd place: the LOSER also feeds in. We model that with a separate
-  // `nextMatchCode = "3P"` (slot home/away) on the SF matches via a
-  // mirror entry — but to keep the schema small, callers can pass the
-  // SF loser through here too if needed.
-}
-
-function isPlaceholderTeamId(teamId: string): boolean {
-  return teamId === "TBD" || teamId.startsWith("TBD-");
 }
 
 // ---------------------------------------------------------------------------

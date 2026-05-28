@@ -21,6 +21,7 @@ import {
 import { parseEvents, parseStats } from "@/lib/mock-live";
 import { prisma } from "@/lib/prisma";
 import { calculateScore, actualWinnerTeamId as resolveWinnerTeamId } from "@/lib/scoring";
+import { isPlaceholderTeamId } from "@/lib/utils";
 
 const MATCH_WINDOW_HOURS = 36;
 
@@ -268,7 +269,7 @@ async function getFixturesForMode(mode: SyncMode, now: Date): Promise<AFFixture[
   return getFixturesForSyncWindow(now);
 }
 
-function buildMatchUpdate(dbMatch: SyncDbMatch, fixture: AFFixture) {
+export function buildMatchUpdate(dbMatch: SyncDbMatch, fixture: AFFixture) {
   const nextStatus = statusFromFixture(fixture);
   const fixtureHome = teamMappingForApiName(fixture.teams.home.name);
   const fixtureAway = teamMappingForApiName(fixture.teams.away.name);
@@ -370,13 +371,13 @@ function findBestFixtureMatch(
   return candidates[0]?.fixture ?? null;
 }
 
-function statusFromFixture(fixture: AFFixture): "upcoming" | "live" | "completed" {
+export function statusFromFixture(fixture: AFFixture): "upcoming" | "live" | "completed" {
   if (isCompleted(fixture.fixture.status)) return "completed";
   if (isLive(fixture.fixture.status)) return "live";
   return "upcoming";
 }
 
-function scoresForDisplay(
+export function scoresForDisplay(
   fixture: AFFixture,
   status: "upcoming" | "live" | "completed"
 ): { home: number | null; away: number | null } {
@@ -387,7 +388,7 @@ function scoresForDisplay(
   };
 }
 
-function scoresForScoring(
+export function scoresForScoring(
   fixture: AFFixture,
   stage: string,
   fallback: { home: number | null; away: number | null }
@@ -401,12 +402,19 @@ function scoresForScoring(
   return fallback;
 }
 
-function resolveApiFootballKnockoutWinner(fixture: AFFixture): BracketSlot | null {
+export function resolveApiFootballKnockoutWinner(fixture: AFFixture): BracketSlot | null {
   const home = fixture.goals.home;
   const away = fixture.goals.away;
   if (home === null || away === null) return null;
   if (home > away) return "home";
   if (away > home) return "away";
+
+  const homeExtra = fixture.score?.extratime?.home;
+  const awayExtra = fixture.score?.extratime?.away;
+  if (homeExtra !== null && homeExtra !== undefined && awayExtra !== null && awayExtra !== undefined) {
+    if (homeExtra > awayExtra) return "home";
+    if (awayExtra > homeExtra) return "away";
+  }
 
   const homePen = fixture.score?.penalty?.home;
   const awayPen = fixture.score?.penalty?.away;
@@ -446,11 +454,7 @@ function normalizeApiTeamName(name: string): string {
     .trim();
 }
 
-function isPlaceholderTeamId(teamId: string): boolean {
-  return teamId === "TBD" || teamId.startsWith("TBD-");
-}
-
-function stageFromApiRound(round: string): string {
+export function stageFromApiRound(round: string): string {
   const value = round.toLowerCase();
   if (value.includes("round of 32")) return "r32";
   if (value.includes("round of 16")) return "r16";
