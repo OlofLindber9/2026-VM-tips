@@ -58,11 +58,12 @@ export default function ReglerPage() {
         <p className="text-white/65 leading-relaxed">
           När slutspelsträdet är klart — efter att alla gruppspelsmatcher är avgjorda — öppnas
           tipsningen för slutspelet. Du tippar <strong className="text-white/85">enbart vem som vinner</strong> varje
-          match, inga mål. Alla slutspelstips måste lämnas in innan den första slutspelsmatchen startar.
+          match, inga mål. Bronsmatchen räknas på samma sätt som övriga slutspelsmatcher.
+          Alla slutspelstips måste lämnas in innan den första slutspelsmatchen startar.
         </p>
 
         <div className="space-y-3">
-          <RuleRow pts={2} color="green" label="Rätt vinnare" example="Tips: Brasilien vinner — Brasilien vinner" />
+          <RuleRow pts={2} color="green" label="Rätt vinnare, även i bronsmatchen" example="Tips: Brasilien vinner — Brasilien vinner" />
           <RuleRow pts={0} color="none" label="Fel vinnare" example="" />
         </div>
 
@@ -153,6 +154,11 @@ export default function ReglerPage() {
               </tr>
               <tr>
                 <td className="py-2.5 pr-4 text-white/60 align-top">Slutspel</td>
+                <td className="py-2.5 pr-4 text-white/80">Rätt vinnare</td>
+                <td className="py-2.5 text-right font-bold" style={{ color: "rgb(110,231,183)" }}>2 p</td>
+              </tr>
+              <tr>
+                <td className="py-2.5 pr-4 text-white/60 align-top">Bronsmatch</td>
                 <td className="py-2.5 pr-4 text-white/80">Rätt vinnare</td>
                 <td className="py-2.5 text-right font-bold" style={{ color: "rgb(110,231,183)" }}>2 p</td>
               </tr>

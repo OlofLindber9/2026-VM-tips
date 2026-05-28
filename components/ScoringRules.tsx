@@ -72,11 +72,11 @@ export default function ScoringRules({ defaultOpen = false }: Props) {
             </div>
             <p className="text-white/55 mb-3 leading-relaxed">
               Tippa <strong className="text-white/80">vem som vinner</strong> varje match — inga mål anges.
-              Alla tips lämnas in när slutspelsträdet är klart,
+              Bronsmatchen ger samma poäng som övriga slutspelsmatcher. Alla tips lämnas in när slutspelsträdet är klart,
               <strong className="text-white/80"> innan slutspelet startar</strong>.
             </p>
             <div className="space-y-2">
-              <RuleRow pts={2} color="green" label="Rätt vinnare" example="Tips: Brasilien vinner, verkligt: Brasilien vinner" />
+              <RuleRow pts={2} color="green" label="Rätt vinnare, även i bronsmatchen" example="Tips: Brasilien vinner, verkligt: Brasilien vinner" />
               <RuleRow pts={0} color="none" label="Fel vinnare" example="" />
             </div>
           </section>
