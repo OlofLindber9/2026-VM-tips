@@ -128,7 +128,7 @@ async function apiFetch<T>(path: string): Promise<T[]> {
 /** All currently live WC 2026 fixtures. */
 export async function getLiveFixtures(): Promise<AFFixture[]> {
   return apiFetch<AFFixture>(
-    `/fixtures?live=${WC_LEAGUE}`
+    `/fixtures?live=all&league=${WC_LEAGUE}&season=${WC_SEASON}`
   );
 }
 
