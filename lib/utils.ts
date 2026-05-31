@@ -1,5 +1,6 @@
 // All group-stage predictions lock when the tournament kicks off
 export const TOURNAMENT_START = new Date("2026-06-11T00:00:00Z");
+const DISPLAY_TIME_ZONE = "Europe/Stockholm";
 
 const FLAG: Record<string, string> = {
   ALG: "🇩🇿", ARG: "🇦🇷", AUS: "🇦🇺", AUT: "🇦🇹", BEL: "🇧🇪",
@@ -27,7 +28,7 @@ export function format(date: Date): string {
     day: "numeric",
     month: "short",
     year: "numeric",
-    timeZone: "UTC",
+    timeZone: DISPLAY_TIME_ZONE,
   }).format(new Date(date));
 }
 
@@ -38,7 +39,7 @@ export function formatWithTime(date: Date): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: "UTC",
+    timeZone: DISPLAY_TIME_ZONE,
   }).format(new Date(date));
 }
 

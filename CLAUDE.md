@@ -200,7 +200,7 @@ Fonts: **Inter** (body) + **Barlow Condensed** (headings, weight 600–900).
 - **No migration files**: Schema changes use `prisma db push` (not `prisma migrate`). There is no `migrations/` directory.
 - **Upsert predictions**: `POST /api/predictions` uses `upsert` — idempotent, safe to call multiple times.
 - **Match stages**: `"group"` | `"r32"` | `"r16"` | `"qf"` | `"sf"` | `"3p"` | `"final"`
-- **Date handling**: All dates stored as UTC. Display uses Swedish locale with `format()` / `formatWithTime()` from `lib/utils.ts`.
+- **Date handling**: All dates are stored as UTC. Display uses Swedish locale and the `Europe/Stockholm` timezone with `format()` / `formatWithTime()` from `lib/utils.ts`.
 - **Path alias**: `@/` maps to the project root. Use `@/lib/...`, `@/components/...`, etc.
 - **Mock live mode**: Set `USE_MOCK_LIVE=true` in `.env` to simulate a live match locally without hitting the API. Controlled via `lib/mock-live.ts`.
 - **No User FK on GroupMembership**: `GroupMembership.userId` is a plain string. Never attempt `include: { user: ... }` on GroupMembership — it has no such relation. Fetch users separately.

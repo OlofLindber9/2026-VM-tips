@@ -203,13 +203,13 @@ All output is in Swedish locale.
 
 ```typescript
 format(date: Date | string): string
-// "15 apr 2026"  (Swedish, UTC timezone)
+// "15 apr 2026"  (Swedish, Europe/Stockholm timezone)
 
 formatWithTime(date: Date | string): string
 // "15 apr 2026, 14:30"
 ```
 
-Both functions interpret dates as UTC to avoid timezone-shifted display.
+Both functions render stored UTC timestamps in Swedish local time using the `Europe/Stockholm` timezone.
 
 ### Stage labels (Swedish)
 
