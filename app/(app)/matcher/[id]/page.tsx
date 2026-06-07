@@ -80,6 +80,9 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
   const hasScore = (isLive || isCompleted) && match.homeScore !== null && match.awayScore !== null;
   const isKnockout = match.stage !== "group";
   const groupStageLocked = match.stage === "group" && now >= TOURNAMENT_START;
+  const worldCupStarted = now >= TOURNAMENT_START;
+  const predictionsLocked = isLive || isPast || groupStageLocked;
+  const showGroupTips = memberships.length > 0 && predictionsLocked && worldCupStarted;
   const isTeamTBD = isPlaceholderTeamId(match.homeTeam.id) || isPlaceholderTeamId(match.awayTeam.id);
   const msUntilKickoff = match.scheduledAt.getTime() - now.getTime();
   const shouldPollLiveState =
@@ -264,7 +267,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
       )}
 
       {/* Group tips */}
-      {memberships.length > 0 && (
+      {showGroupTips && (
         <GroupTipsSection
           groups={groupTipsData}
           isLive={isLive}
@@ -332,7 +335,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
             predictedWinnerTeamId: p.predictedWinnerTeamId,
             score: p.score,
           }))}
-          locked={isLive || isPast || groupStageLocked}
+          locked={predictionsLocked}
         />
       )}
     </div>
