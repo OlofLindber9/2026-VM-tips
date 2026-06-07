@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { isPlaceholderTeamId } from "@/lib/utils";
+import {
+  getKnockoutPredictionWindow,
+  knockoutPredictionWindowError,
+} from "@/lib/prediction-windows";
 
 const KNOCKOUT_STAGES = new Set(["r32", "r16", "qf", "sf", "3p", "final"]);
 
@@ -35,6 +39,18 @@ export async function POST(request: Request) {
   const isGroup = match.stage === "group";
   const hasPlaceholderTeam =
     isPlaceholderTeamId(match.homeTeamId) || isPlaceholderTeamId(match.awayTeamId);
+
+  if (isKnockout) {
+    const predictionWindow = await getKnockoutPredictionWindow();
+    return NextResponse.json(
+      {
+        error: predictionWindow.isOpen
+          ? "Slutspelstips sparas från slutspelsträdet."
+          : knockoutPredictionWindowError(predictionWindow),
+      },
+      { status: 403 }
+    );
+  }
 
   // Validate fields per stage
   if (isGroup) {

@@ -14,6 +14,7 @@
     "db:generate": "prisma generate",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:seed:knockout": "npx tsx prisma/seed-knockout.ts",
+    "db:seed:knockout:demo": "npx tsx prisma/seed-knockout.ts --demo",
     "db:seed:test-bracket": "npx tsx prisma/seed-test-bracket.ts",
     "db:prepare-production": "npx tsx prisma/prepare-production-data.ts",
     "db:backup:predictions": "npx tsx scripts/export-predictions-csv.ts"

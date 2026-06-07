@@ -3,7 +3,12 @@ import AdvancedBracketTree, {
   type AdvancedBracketNode,
   type AdvancedBracketRounds,
 } from "@/components/AdvancedBracketTree";
+import BracketPredictionForm from "@/components/BracketPredictionForm";
 import { getBracket, type BracketNode } from "@/lib/bracket";
+import {
+  getKnockoutPredictionWindow,
+  knockoutPredictionWindowError,
+} from "@/lib/prediction-windows";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
@@ -28,7 +33,10 @@ export default async function BracketPage({
   const selectedGroupId = memberships.some((m) => m.group.id === requestedGroupId)
     ? requestedGroupId
     : memberships[0]?.group.id;
-  const bracket = await getBracket(userId, selectedGroupId);
+  const [bracket, predictionWindow] = await Promise.all([
+    getBracket(userId, selectedGroupId),
+    getKnockoutPredictionWindow(),
+  ]);
   const clientRounds = serializeRounds(bracket.rounds);
 
   const totalKnockoutMatches =
@@ -110,6 +118,33 @@ export default async function BracketPage({
           <p className="text-[10px] uppercase tracking-wider text-white/35">fel</p>
         </div>
       </div>
+
+      {selectedGroupId && predictionWindow.isOpen && (
+        <BracketPredictionForm
+          key={selectedGroupId}
+          rounds={clientRounds}
+          groupId={selectedGroupId}
+          firstKnockoutStartsAt={predictionWindow.firstKnockoutStartsAt?.toISOString() ?? null}
+        />
+      )}
+
+      {!predictionWindow.isOpen && (
+        <div className="glass-card">
+          <p className="text-sm font-semibold text-white/65">
+            {knockoutPredictionWindowError(predictionWindow)}
+          </p>
+        </div>
+      )}
+
+      {memberships.length === 0 && (
+        <div className="glass-card text-center py-8">
+          <p className="text-white/50 mb-3">GÃ¥ med i eller skapa en grupp fÃ¶r att tippa.</p>
+          <div className="flex gap-3 justify-center">
+            <Link href="/groups/create" className="btn-primary text-sm">Skapa grupp</Link>
+            <Link href="/groups/join" className="btn-secondary text-sm">GÃ¥ med i grupp</Link>
+          </div>
+        </div>
+      )}
 
       <AdvancedBracketTree rounds={clientRounds} />
     </div>

@@ -269,7 +269,11 @@ export async function disconnectKnockoutSeedPrisma() {
 }
 
 if (require.main === module) {
-  seedKnockoutBracket()
+  seedKnockoutBracket({
+    useDemoPairings:
+      process.argv.includes("--demo") ||
+      process.env.USE_DEMO_KNOCKOUT_PAIRINGS === "true",
+  })
     .catch((e) => {
       console.error(e);
       process.exit(1);

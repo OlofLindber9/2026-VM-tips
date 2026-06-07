@@ -12,6 +12,7 @@ import {
   type MockStats,
 } from "@/lib/mock-live";
 import { calculateGroupScore } from "@/lib/scoring";
+import { getKnockoutPredictionWindow } from "@/lib/prediction-windows";
 import PredictionForm from "@/components/PredictionForm";
 import MatchResult from "@/components/ResultsPodium";
 import LiveRefresh from "@/components/LiveRefresh";
@@ -81,8 +82,15 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
   const isKnockout = match.stage !== "group";
   const groupStageLocked = match.stage === "group" && now >= TOURNAMENT_START;
   const worldCupStarted = now >= TOURNAMENT_START;
+  const knockoutPredictionWindow = isKnockout
+    ? await getKnockoutPredictionWindow(now)
+    : null;
   const predictionsLocked = isLive || isPast || groupStageLocked;
-  const showGroupTips = memberships.length > 0 && predictionsLocked && worldCupStarted;
+  const predictionFormLocked = isKnockout || predictionsLocked;
+  const groupTipsLocked = isKnockout
+    ? knockoutPredictionWindow?.knockoutStarted === true
+    : predictionsLocked;
+  const showGroupTips = memberships.length > 0 && groupTipsLocked && worldCupStarted;
   const isTeamTBD = isPlaceholderTeamId(match.homeTeam.id) || isPlaceholderTeamId(match.awayTeam.id);
   const msUntilKickoff = match.scheduledAt.getTime() - now.getTime();
   const shouldPollLiveState =
@@ -309,6 +317,20 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
       )}
 
       {/* Prediction form / locked prediction */}
+      {isKnockout && (
+        <div className="glass-card flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-white/60">
+            Slutspelstips lämnas i slutspelsträdet.
+          </p>
+          <Link
+            href={`/bracket${memberships[0]?.groupId ? `?group=${memberships[0].groupId}` : ""}`}
+            className="btn-secondary text-sm"
+          >
+            Öppna slutspel
+          </Link>
+        </div>
+      )}
+
       {memberships.length === 0 ? (
         <div className="glass-card text-center py-8">
           <p className="text-white/50 mb-3">Gå med i eller skapa en grupp för att tippa.</p>
@@ -335,7 +357,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
             predictedWinnerTeamId: p.predictedWinnerTeamId,
             score: p.score,
           }))}
-          locked={predictionsLocked}
+          locked={predictionFormLocked}
         />
       )}
     </div>
