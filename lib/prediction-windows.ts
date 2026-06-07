@@ -1,8 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
 export const KNOCKOUT_PREDICTION_STAGES = ["r32", "r16", "qf", "sf", "3p", "final"] as const;
-export const DEV_OPEN_KNOCKOUT_PREDICTION_WINDOW_ENV =
-  "DEV_OPEN_KNOCKOUT_PREDICTION_WINDOW";
 
 export type KnockoutPredictionWindow = {
   isOpen: boolean;
@@ -44,13 +42,10 @@ export async function getKnockoutPredictionWindow(
   ]);
 
   const firstKnockoutStartsAt = firstKnockout?.scheduledAt ?? null;
-  const devWindowOverride = isDevKnockoutPredictionWindowOverrideEnabled();
-  const groupStageCompleted =
-    devWindowOverride || (groupMatchesTotal > 0 && incompleteGroupMatches === 0);
-  const knockoutStarted = devWindowOverride
-    ? false
-    : startedKnockoutMatches > 0 ||
-      (firstKnockoutStartsAt !== null && firstKnockoutStartsAt <= now);
+  const groupStageCompleted = groupMatchesTotal > 0 && incompleteGroupMatches === 0;
+  const knockoutStarted =
+    startedKnockoutMatches > 0 ||
+    (firstKnockoutStartsAt !== null && firstKnockoutStartsAt <= now);
 
   return {
     isOpen:
@@ -67,24 +62,17 @@ export async function getKnockoutPredictionWindow(
   };
 }
 
-function isDevKnockoutPredictionWindowOverrideEnabled(): boolean {
-  return (
-    process.env.NODE_ENV === "development" &&
-    process.env[DEV_OPEN_KNOCKOUT_PREDICTION_WINDOW_ENV] === "true"
-  );
-}
-
 export function knockoutPredictionWindowError(
   window: KnockoutPredictionWindow
 ): string {
   if (window.knockoutMatchesTotal === 0) {
-    return "Slutspelsträdet är inte tillgängligt ännu.";
+    return "Slutspelstr\u00e4det \u00e4r inte tillg\u00e4ngligt \u00e4nnu.";
   }
   if (!window.groupStageCompleted) {
-    return "Slutspelstipsningen öppnar när alla gruppspelsmatcher är klara.";
+    return "Slutspelstipsningen \u00f6ppnar n\u00e4r alla gruppspelsmatcher \u00e4r klara.";
   }
   if (window.knockoutStarted) {
-    return "Slutspelstipsningen är stängd eftersom slutspelet har startat.";
+    return "Slutspelstipsningen \u00e4r st\u00e4ngd eftersom slutspelet har startat.";
   }
-  return "Slutspelstipsningen är inte öppen just nu.";
+  return "Slutspelstipsningen \u00e4r inte \u00f6ppen just nu.";
 }

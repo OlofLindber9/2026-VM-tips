@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState, type CSSProperties } from "react";
 import type { BracketNode, KnockoutStage } from "@/lib/bracket";
-import { format, stageLabel, teamFlag } from "@/lib/utils";
+import { format, formatWithTime, stageLabel, teamFlag } from "@/lib/utils";
 
 export type AdvancedBracketNode = Omit<BracketNode, "scheduledAt"> & {
   scheduledAt: string;
@@ -13,9 +14,16 @@ export type AdvancedBracketRounds = Record<KnockoutStage, AdvancedBracketNode[]>
 
 type Props = {
   rounds: AdvancedBracketRounds;
+  predictionMode?: {
+    isOpen: boolean;
+    groupId?: string;
+    firstKnockoutStartsAt?: string | null;
+    closedMessage?: string;
+  };
 };
 
 const MAIN_ROUNDS: KnockoutStage[] = ["r32", "r16", "qf", "sf", "final"];
+const PREDICTION_ROUNDS: KnockoutStage[] = ["r32", "r16", "qf", "sf", "3p", "final"];
 const CARD_W = 252;
 const CARD_H = 104;
 const SLOT_H = 128;
@@ -31,12 +39,44 @@ type PositionedNode = {
   top: number;
 };
 
-export default function AdvancedBracketTree({ rounds }: Props) {
+type BracketTeam = { id: string; name: string };
+type MatchParticipants = { home: BracketTeam | null; away: BracketTeam | null };
+type PickValue = {
+  predictedWinnerTeamId: string | null;
+  predictedHome: number | null;
+  predictedAway: number | null;
+};
+type PickState = Record<string, PickValue>;
+
+export default function AdvancedBracketTree({ rounds, predictionMode }: Props) {
+  const router = useRouter();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const sortedRounds = useMemo(() => sortRounds(rounds), [rounds]);
-  const allMainNodes = MAIN_ROUNDS.flatMap((stage) => sortedRounds[stage]);
-  const thirdPlace = sortedRounds["3p"];
+  const editable = predictionMode?.isOpen === true && !!predictionMode.groupId;
+  const [picks, setPicks] = useState<PickState>(() =>
+    sanitizePicks(sortedRounds, initialPicks(sortedRounds))
+  );
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const participants = useMemo(
+    () => computeParticipants(sortedRounds, picks),
+    [sortedRounds, picks]
+  );
+  const missingNodes = useMemo(
+    () => incompleteNodes(sortedRounds, picks, participants),
+    [sortedRounds, picks, participants]
+  );
+  const totalPredictionNodes = PREDICTION_ROUNDS.flatMap((stage) => sortedRounds[stage]).length;
+  const completedPredictionNodes = totalPredictionNodes - missingNodes.length;
+  const canSave = editable && missingNodes.length === 0 && !saving;
+  const displayRounds = useMemo(
+    () => applyPickState(sortedRounds, picks, participants, editable),
+    [sortedRounds, picks, participants, editable]
+  );
+  const allMainNodes = MAIN_ROUNDS.flatMap((stage) => displayRounds[stage]);
+  const thirdPlace = displayRounds["3p"];
   const bracketHeight = BASE_SLOTS * SLOT_H;
   const bracketWidth = MAIN_ROUNDS.length * CARD_W + (MAIN_ROUNDS.length - 1) * ROUND_GAP;
 
@@ -45,7 +85,7 @@ export default function AdvancedBracketTree({ rounds }: Props) {
     const byId = new Map<string, PositionedNode>();
 
     MAIN_ROUNDS.forEach((stage, roundIndex) => {
-      sortedRounds[stage].forEach((node, matchIndex) => {
+      displayRounds[stage].forEach((node, matchIndex) => {
         const positioned = {
           node,
           roundIndex,
@@ -59,7 +99,7 @@ export default function AdvancedBracketTree({ rounds }: Props) {
     });
 
     return { byCode, byId };
-  }, [sortedRounds]);
+  }, [displayRounds]);
 
   function toggleExpanded(matchId: string) {
     setExpandedIds((current) => {
@@ -70,21 +110,149 @@ export default function AdvancedBracketTree({ rounds }: Props) {
     });
   }
 
+  function updateWinner(node: AdvancedBracketNode, teamId: string) {
+    if (!editable) return;
+    setSaveError("");
+    setSaveSuccess(false);
+    setPicks((current) => {
+      const currentPick = current[node.matchId] ?? emptyPick();
+      const next: PickState = {
+        ...current,
+        [node.matchId]: {
+          ...currentPick,
+          predictedWinnerTeamId: teamId,
+          predictedHome:
+            node.stage === "final" && currentPick.predictedHome === null
+              ? 0
+              : currentPick.predictedHome,
+          predictedAway:
+            node.stage === "final" && currentPick.predictedAway === null
+              ? 0
+              : currentPick.predictedAway,
+        },
+      };
+      return sanitizePicks(sortedRounds, next);
+    });
+  }
+
+  function updateFinalScore(matchId: string, side: "home" | "away", value: string) {
+    if (!editable) return;
+    setSaveError("");
+    setSaveSuccess(false);
+    const parsed = value === "" ? null : Math.max(0, Math.min(99, Number(value)));
+    if (parsed !== null && !Number.isInteger(parsed)) return;
+
+    setPicks((current) => {
+      const currentPick = current[matchId] ?? emptyPick();
+      return {
+        ...current,
+        [matchId]: {
+          ...currentPick,
+          predictedHome: side === "home" ? parsed : currentPick.predictedHome,
+          predictedAway: side === "away" ? parsed : currentPick.predictedAway,
+        },
+      };
+    });
+  }
+
+  async function saveBracket() {
+    if (!canSave || !predictionMode?.groupId) return;
+    setSaving(true);
+    setSaveError("");
+    setSaveSuccess(false);
+
+    const res = await fetch("/api/bracket/predictions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        groupId: predictionMode.groupId,
+        predictions: PREDICTION_ROUNDS.flatMap((stage) => sortedRounds[stage]).map((node) => {
+          const pick = picks[node.matchId] ?? emptyPick();
+          return {
+            matchId: node.matchId,
+            predictedWinnerTeamId: pick.predictedWinnerTeamId,
+            predictedHome: node.stage === "final" ? pick.predictedHome : null,
+            predictedAway: node.stage === "final" ? pick.predictedAway : null,
+          };
+        }),
+      }),
+    });
+
+    const data = await res.json();
+    setSaving(false);
+
+    if (!res.ok) {
+      setSaveError(data.error || "Det gick inte att spara slutspelstipset.");
+      return;
+    }
+
+    setSaveSuccess(true);
+    router.refresh();
+  }
+
   return (
     <div className="space-y-4">
-      <div className="overflow-x-auto rounded-lg border border-white/10 bg-black/15 p-4 shadow-2xl">
-        <div
-          className="relative"
-          style={{
-            width: bracketWidth,
-            height: bracketHeight + HEADER_H + 250,
-            minWidth: bracketWidth,
-          }}
-        >
-          <RoundHeaders width={bracketWidth} />
-          <ConnectorLayer nodes={allMainNodes} positions={positions.byCode} />
+      <div className="overflow-hidden rounded-lg border border-white/10 bg-black/15 shadow-2xl">
+        {predictionMode && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+            <div>
+              <p className="text-sm font-bold text-white/70">
+                {predictionMode.isOpen ? "Slutspelstips" : "Slutspelsträd"}
+              </p>
+              {predictionMode.isOpen ? (
+                <p className="mt-0.5 text-xs text-white/35">
+                  {completedPredictionNodes}/{totalPredictionNodes} klara
+                  {predictionMode.firstKnockoutStartsAt
+                    ? ` · Deadline ${formatWithTime(new Date(predictionMode.firstKnockoutStartsAt))}`
+                    : ""}
+                </p>
+              ) : (
+                <p className="mt-0.5 text-xs text-white/40">
+                  {predictionMode.closedMessage}
+                </p>
+              )}
+            </div>
+            {predictionMode.isOpen && (
+              <button
+                type="button"
+                disabled={!canSave}
+                onClick={saveBracket}
+                className="btn-primary text-sm disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {saving ? "Sparar..." : "Spara hela trädet"}
+              </button>
+            )}
+          </div>
+        )}
 
-          {MAIN_ROUNDS.map((stage, roundIndex) => (
+        {(saveError || saveSuccess) && (
+          <div className="border-b border-white/10 px-4 py-2">
+            {saveError && (
+              <p className="rounded-lg border border-red-500/30 bg-red-900/25 px-3 py-2 text-sm text-red-200">
+                {saveError}
+              </p>
+            )}
+            {saveSuccess && (
+              <p className="rounded-lg border border-emerald-500/30 bg-emerald-900/20 px-3 py-2 text-sm text-emerald-200">
+                Slutspelstipset är sparat.
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="overflow-x-auto p-4">
+          <div
+            className="relative"
+            style={{
+              width: bracketWidth,
+              height: bracketHeight + HEADER_H + 250,
+              minWidth: bracketWidth,
+            }}
+          >
+            <RoundHeaders width={bracketWidth} />
+            <ConnectorLayer nodes={allMainNodes} positions={positions.byCode} />
+
+            {MAIN_ROUNDS.map((stage, roundIndex) => (
             <div
               key={stage}
               className="absolute top-0"
@@ -106,14 +274,19 @@ export default function AdvancedBracketTree({ rounds }: Props) {
                   }}
                 >
                   <TreeMatchCard
-                    node={node}
+                    node={displayRounds[stage][matchIndex]}
                     expanded={expandedIds.has(node.matchId)}
                     onToggle={() => toggleExpanded(node.matchId)}
+                    editable={editable}
+                    pick={picks[node.matchId] ?? emptyPick()}
+                    onPick={(teamId) => updateWinner(node, teamId)}
+                    onFinalScore={(side, value) => updateFinalScore(node.matchId, side, value)}
                   />
                 </div>
               ))}
             </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
@@ -134,6 +307,10 @@ export default function AdvancedBracketTree({ rounds }: Props) {
                 node={node}
                 expanded={expandedIds.has(node.matchId)}
                 onToggle={() => toggleExpanded(node.matchId)}
+                editable={editable}
+                pick={picks[node.matchId] ?? emptyPick()}
+                onPick={(teamId) => updateWinner(node, teamId)}
+                onFinalScore={(side, value) => updateFinalScore(node.matchId, side, value)}
                 fluid
               />
             ))}
@@ -223,18 +400,27 @@ function TreeMatchCard({
   node,
   expanded,
   onToggle,
+  editable = false,
+  pick = emptyPick(),
+  onPick,
+  onFinalScore,
   fluid = false,
 }: {
   node: AdvancedBracketNode;
   expanded: boolean;
   onToggle: () => void;
+  editable?: boolean;
+  pick?: PickValue;
+  onPick?: (teamId: string) => void;
+  onFinalScore?: (side: "home" | "away", value: string) => void;
   fluid?: boolean;
 }) {
   const pred = node.userPrediction;
   const borderColor = matchBorderColor(node);
   const status = statusText(node.status);
-  const pickedTeamId = pred?.predictedWinnerTeamId ?? null;
+  const pickedTeamId = editable ? pick.predictedWinnerTeamId : pred?.predictedWinnerTeamId ?? null;
   const actualWinnerId = node.winnerTeamId;
+  const canPick = editable && !!node.homeTeam && !!node.awayTeam;
 
   return (
     <article
@@ -245,47 +431,76 @@ function TreeMatchCard({
         boxShadow: expanded ? "0 20px 50px rgba(0,0,0,0.45)" : undefined,
       }}
     >
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={expanded}
-        className="block w-full text-left"
-        style={{ minHeight: CARD_H }}
-      >
-        <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
-          <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+        >
+          <span className="min-w-0">
             <span className="text-[10px] font-black uppercase tracking-widest text-app-accent/75">
               {node.bracketCode}
             </span>
-            <span className="truncate text-[10px] font-semibold uppercase tracking-widest text-white/30">
+            <span className="ml-2 truncate text-[10px] font-semibold uppercase tracking-widest text-white/30">
               {status}
             </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <PredictionPill node={node} />
-            <span className="flex h-5 w-5 items-center justify-center rounded border border-white/15 bg-white/5 text-xs font-black text-white/45">
-              {expanded ? "-" : "+"}
-            </span>
-          </div>
+          </span>
+        </button>
+        <div className="flex items-center gap-2">
+          <PredictionPill node={node} />
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label={expanded ? "Stäng matchdetaljer" : "Öppna matchdetaljer"}
+            className="flex h-5 w-5 items-center justify-center rounded border border-white/15 bg-white/5 text-xs font-black text-white/45"
+          >
+            {expanded ? "-" : "+"}
+          </button>
         </div>
+      </div>
 
-        <div className="space-y-1.5 px-3 py-2.5">
-          <TeamLine
-            team={node.homeTeam}
-            score={node.homeScore}
-            won={node.knockoutWinner === "home"}
-            picked={pickedTeamId === node.homeTeam?.id}
-            actualWinner={actualWinnerId === node.homeTeam?.id}
-          />
-          <TeamLine
-            team={node.awayTeam}
-            score={node.awayScore}
-            won={node.knockoutWinner === "away"}
-            picked={pickedTeamId === node.awayTeam?.id}
-            actualWinner={actualWinnerId === node.awayTeam?.id}
-          />
-        </div>
-      </button>
+      <div className="space-y-1.5 px-3 py-2.5" style={{ minHeight: CARD_H - 34 }}>
+        <TeamLine
+          team={node.homeTeam}
+          score={node.homeScore}
+          won={node.knockoutWinner === "home"}
+          picked={pickedTeamId === node.homeTeam?.id}
+          actualWinner={actualWinnerId === node.homeTeam?.id}
+          editable={canPick}
+          onSelect={node.homeTeam ? () => onPick?.(node.homeTeam!.id) : undefined}
+        />
+        <TeamLine
+          team={node.awayTeam}
+          score={node.awayScore}
+          won={node.knockoutWinner === "away"}
+          picked={pickedTeamId === node.awayTeam?.id}
+          actualWinner={actualWinnerId === node.awayTeam?.id}
+          editable={canPick}
+          onSelect={node.awayTeam ? () => onPick?.(node.awayTeam!.id) : undefined}
+        />
+
+        {editable && node.stage === "final" && (
+          <div className="mt-2 rounded-lg border border-white/10 bg-white/5 p-2">
+            <p className="mb-1.5 text-[9px] font-black uppercase tracking-widest text-white/35">
+              90 min
+            </p>
+            <div className="flex items-center gap-2">
+              <FinalScoreInput
+                value={pick.predictedHome}
+                disabled={!pickedTeamId}
+                onChange={(value) => onFinalScore?.("home", value)}
+              />
+              <span className="text-xs font-black text-white/30">-</span>
+              <FinalScoreInput
+                value={pick.predictedAway}
+                disabled={!pickedTeamId}
+                onChange={(value) => onFinalScore?.("away", value)}
+              />
+            </div>
+          </div>
+        )}
+      </div>
 
       {expanded && <ExpandedMatchDetails node={node} />}
     </article>
@@ -345,12 +560,16 @@ function TeamLine({
   won,
   picked,
   actualWinner,
+  editable = false,
+  onSelect,
 }: {
   team: { id: string; name: string } | null;
   score: number | null;
   won: boolean;
   picked: boolean;
   actualWinner: boolean;
+  editable?: boolean;
+  onSelect?: () => void;
 }) {
   const style: CSSProperties = {
     background: won || actualWinner ? "rgba(52,211,153,0.12)" : picked ? "rgba(232,160,32,0.12)" : "rgba(255,255,255,0.045)",
@@ -369,11 +588,8 @@ function TeamLine({
     );
   }
 
-  return (
-    <div
-      className="flex h-8 items-center justify-between gap-2 rounded-lg border px-2 text-sm"
-      style={style}
-    >
+  const content = (
+    <>
       <span className="min-w-0 truncate font-semibold text-white/78">
         <span className="mr-1">{teamFlag(team.id)}</span>
         {team.name}
@@ -388,7 +604,51 @@ function TeamLine({
           {score !== null ? score : "-"}
         </span>
       </div>
+    </>
+  );
+
+  if (editable) {
+    return (
+      <button
+        type="button"
+        onClick={onSelect}
+        className="flex h-8 w-full items-center justify-between gap-2 rounded-lg border px-2 text-left text-sm transition-colors hover:border-app-accent/45"
+        style={style}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className="flex h-8 items-center justify-between gap-2 rounded-lg border px-2 text-sm"
+      style={style}
+    >
+      {content}
     </div>
+  );
+}
+
+function FinalScoreInput({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: number | null;
+  disabled: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <input
+      type="number"
+      min={0}
+      max={99}
+      value={value ?? ""}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.value)}
+      className="h-8 w-full rounded-md border border-white/10 bg-black/25 px-2 text-center text-sm font-black tabular-nums text-white outline-none focus:border-app-accent/60 disabled:opacity-40"
+    />
   );
 }
 
@@ -499,4 +759,186 @@ function teamNameForPrediction(node: AdvancedBracketNode, teamId: string | null)
   if (node.homeTeam?.id === teamId) return node.homeTeam.name;
   if (node.awayTeam?.id === teamId) return node.awayTeam.name;
   return teamId;
+}
+
+function applyPickState(
+  rounds: AdvancedBracketRounds,
+  picks: PickState,
+  participants: Map<string, MatchParticipants>,
+  editable: boolean
+): AdvancedBracketRounds {
+  if (!editable) return rounds;
+
+  const mapNode = (node: AdvancedBracketNode): AdvancedBracketNode => {
+    const pick = picks[node.matchId] ?? emptyPick();
+    const matchParticipants = participants.get(node.matchId);
+    const hasPick =
+      !!pick.predictedWinnerTeamId ||
+      pick.predictedHome !== null ||
+      pick.predictedAway !== null;
+
+    return {
+      ...node,
+      homeTeam: matchParticipants?.home ?? node.homeTeam,
+      awayTeam: matchParticipants?.away ?? node.awayTeam,
+      userPrediction: hasPick
+        ? {
+            predictedWinnerTeamId: pick.predictedWinnerTeamId,
+            predictedHome: pick.predictedHome,
+            predictedAway: pick.predictedAway,
+            score: node.userPrediction?.score ?? null,
+            cascadeMiss: false,
+          }
+        : null,
+    };
+  };
+
+  return {
+    r32: rounds.r32.map(mapNode),
+    r16: rounds.r16.map(mapNode),
+    qf: rounds.qf.map(mapNode),
+    sf: rounds.sf.map(mapNode),
+    "3p": rounds["3p"].map(mapNode),
+    final: rounds.final.map(mapNode),
+  };
+}
+
+function initialPicks(rounds: AdvancedBracketRounds): PickState {
+  const picks: PickState = {};
+  for (const node of allRoundNodes(rounds)) {
+    picks[node.matchId] = {
+      predictedWinnerTeamId: node.userPrediction?.predictedWinnerTeamId ?? null,
+      predictedHome: node.userPrediction?.predictedHome ?? null,
+      predictedAway: node.userPrediction?.predictedAway ?? null,
+    };
+  }
+  return picks;
+}
+
+function incompleteNodes(
+  rounds: AdvancedBracketRounds,
+  picks: PickState,
+  participants: Map<string, MatchParticipants>
+) {
+  return allRoundNodes(rounds).filter((node) => {
+    const pick = picks[node.matchId] ?? emptyPick();
+    const matchParticipants = participants.get(node.matchId) ?? actualParticipants(node);
+    if (!selectedTeam(pick.predictedWinnerTeamId, matchParticipants)) return true;
+    if (node.stage === "final" && (pick.predictedHome === null || pick.predictedAway === null)) {
+      return true;
+    }
+    return false;
+  });
+}
+
+function sanitizePicks(rounds: AdvancedBracketRounds, picks: PickState): PickState {
+  let next = clonePicks(picks);
+
+  for (let pass = 0; pass < PREDICTION_ROUNDS.length; pass++) {
+    let changed = false;
+    const participants = computeParticipants(rounds, next);
+
+    for (const node of allRoundNodes(rounds)) {
+      const pick = next[node.matchId] ?? emptyPick();
+      const matchParticipants = participants.get(node.matchId) ?? actualParticipants(node);
+      if (pick.predictedWinnerTeamId && !selectedTeam(pick.predictedWinnerTeamId, matchParticipants)) {
+        next = {
+          ...next,
+          [node.matchId]: {
+            predictedWinnerTeamId: null,
+            predictedHome: node.stage === "final" ? null : pick.predictedHome,
+            predictedAway: node.stage === "final" ? null : pick.predictedAway,
+          },
+        };
+        changed = true;
+      }
+    }
+
+    if (!changed) break;
+  }
+
+  return next;
+}
+
+function computeParticipants(
+  rounds: AdvancedBracketRounds,
+  picks: PickState
+): Map<string, MatchParticipants> {
+  const participants = new Map<string, MatchParticipants>();
+  const nodeByCode = new Map<string, AdvancedBracketNode>();
+
+  for (const node of allRoundNodes(rounds)) {
+    nodeByCode.set(node.bracketCode, node);
+  }
+
+  for (const node of rounds.r32) {
+    participants.set(node.matchId, actualParticipants(node));
+  }
+
+  for (const stage of ["r32", "r16", "qf", "sf"] as KnockoutStage[]) {
+    for (const node of rounds[stage]) {
+      const matchParticipants = participants.get(node.matchId) ?? actualParticipants(node);
+      const winner = selectedTeam(
+        picks[node.matchId]?.predictedWinnerTeamId ?? null,
+        matchParticipants
+      );
+      if (!winner) continue;
+
+      if (node.nextMatchCode && node.nextMatchSlot) {
+        const nextNode = nodeByCode.get(node.nextMatchCode);
+        if (nextNode) setParticipant(participants, nextNode.matchId, node.nextMatchSlot, winner);
+      }
+
+      if (node.stage === "sf" && node.nextMatchSlot) {
+        const thirdPlace = nodeByCode.get("3P");
+        const loser =
+          winner.id === matchParticipants.home?.id
+            ? matchParticipants.away
+            : matchParticipants.home;
+        if (thirdPlace && loser) {
+          setParticipant(participants, thirdPlace.matchId, node.nextMatchSlot, loser);
+        }
+      }
+    }
+  }
+
+  return participants;
+}
+
+function setParticipant(
+  participants: Map<string, MatchParticipants>,
+  matchId: string,
+  slot: "home" | "away",
+  team: BracketTeam
+) {
+  const current = participants.get(matchId) ?? { home: null, away: null };
+  participants.set(matchId, { ...current, [slot]: team });
+}
+
+function actualParticipants(node: AdvancedBracketNode): MatchParticipants {
+  return {
+    home: node.homeTeam,
+    away: node.awayTeam,
+  };
+}
+
+function selectedTeam(teamId: string | null, participants: MatchParticipants): BracketTeam | null {
+  if (!teamId) return null;
+  if (participants.home?.id === teamId) return participants.home;
+  if (participants.away?.id === teamId) return participants.away;
+  return null;
+}
+
+function allRoundNodes(rounds: AdvancedBracketRounds): AdvancedBracketNode[] {
+  return PREDICTION_ROUNDS.flatMap((stage) => rounds[stage]);
+}
+
+function emptyPick(): PickValue {
+  return { predictedWinnerTeamId: null, predictedHome: null, predictedAway: null };
+}
+
+function clonePicks(picks: PickState): PickState {
+  return Object.fromEntries(
+    Object.entries(picks).map(([matchId, pick]) => [matchId, { ...pick }])
+  );
 }

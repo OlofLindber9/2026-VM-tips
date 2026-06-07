@@ -3,7 +3,6 @@ import AdvancedBracketTree, {
   type AdvancedBracketNode,
   type AdvancedBracketRounds,
 } from "@/components/AdvancedBracketTree";
-import BracketPredictionForm from "@/components/BracketPredictionForm";
 import { getBracket, type BracketNode } from "@/lib/bracket";
 import {
   getKnockoutPredictionWindow,
@@ -119,23 +118,6 @@ export default async function BracketPage({
         </div>
       </div>
 
-      {selectedGroupId && predictionWindow.isOpen && (
-        <BracketPredictionForm
-          key={selectedGroupId}
-          rounds={clientRounds}
-          groupId={selectedGroupId}
-          firstKnockoutStartsAt={predictionWindow.firstKnockoutStartsAt?.toISOString() ?? null}
-        />
-      )}
-
-      {!predictionWindow.isOpen && (
-        <div className="glass-card">
-          <p className="text-sm font-semibold text-white/65">
-            {knockoutPredictionWindowError(predictionWindow)}
-          </p>
-        </div>
-      )}
-
       {memberships.length === 0 && (
         <div className="glass-card text-center py-8">
           <p className="text-white/50 mb-3">GÃ¥ med i eller skapa en grupp fÃ¶r att tippa.</p>
@@ -146,7 +128,20 @@ export default async function BracketPage({
         </div>
       )}
 
-      <AdvancedBracketTree rounds={clientRounds} />
+      <AdvancedBracketTree
+        key={selectedGroupId ?? "no-group"}
+        rounds={clientRounds}
+        predictionMode={
+          selectedGroupId
+            ? {
+                isOpen: predictionWindow.isOpen,
+                groupId: selectedGroupId,
+                firstKnockoutStartsAt: predictionWindow.firstKnockoutStartsAt?.toISOString() ?? null,
+                closedMessage: knockoutPredictionWindowError(predictionWindow),
+              }
+            : undefined
+        }
+      />
     </div>
   );
 }

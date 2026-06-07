@@ -152,12 +152,12 @@ export async function getBracket(
 
     const homeIsPlaceholder = isPlaceholderTeamId(m.homeTeamId);
     const awayIsPlaceholder = isPlaceholderTeamId(m.awayTeamId);
-    const homeTeam: BracketTeam | null = homeIsPlaceholder
-      ? null
-      : { id: m.homeTeam.id, name: m.homeTeam.name };
-    const awayTeam: BracketTeam | null = awayIsPlaceholder
-      ? null
-      : { id: m.awayTeam.id, name: m.awayTeam.name };
+    const homeTeam: BracketTeam | null = !homeIsPlaceholder
+      ? { id: m.homeTeam.id, name: m.homeTeam.name }
+      : null;
+    const awayTeam: BracketTeam | null = !awayIsPlaceholder
+      ? { id: m.awayTeam.id, name: m.awayTeam.name }
+      : null;
 
     const winnerTeamId = actualWinnerTeamId(
       m.knockoutWinner,
@@ -171,7 +171,7 @@ export async function getBracket(
     if (pred) {
       const expected = expectedTeamsByMatch.get(m.id);
       const teamsActuallyInMatch = new Set(
-        [m.homeTeamId, m.awayTeamId].filter((id) => !isPlaceholderTeamId(id))
+        [homeTeam?.id, awayTeam?.id].filter((id): id is string => !!id)
       );
       const cascadeMiss =
         m.status !== "completed" &&
