@@ -26,10 +26,11 @@ function GoalIcon({ detail }: { detail: string }) {
 }
 
 function CardIcon({ detail }: { detail: string }) {
-  if (detail === "Red Card" || detail === "Second Yellow card") {
+  const normalizedDetail = detail.toLowerCase();
+  if (normalizedDetail === "red card" || normalizedDetail === "second yellow card") {
     return (
       <span
-        className="inline-block w-3.5 h-4.5 rounded-[2px] shrink-0"
+        className="inline-block w-3.5 h-[18px] rounded-[2px] shrink-0"
         style={{ background: "#ef4444" }}
         title="Rött kort"
       />
