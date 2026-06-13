@@ -171,7 +171,7 @@ function MatchTabs({
 }) {
   const tabs = [
     { id: "current" as const, href: "/matcher", label: "Kommande", count: currentCount },
-    { id: "passed" as const, href: "/matcher?tab=passed", label: "Passerade", count: passedCount },
+    { id: "passed" as const, href: "/matcher?tab=passed", label: "Avslutade", count: passedCount },
   ];
 
   return (
