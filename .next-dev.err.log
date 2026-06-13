@@ -1,0 +1,3 @@
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack from C:\Users\ololi\StudioProjects\2026-VM-tips\.next\cache\webpack\client-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack from C:\Users\ololi\StudioProjects\2026-VM-tips\.next\cache\webpack\server-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack from C:\Users\ololi\StudioProjects\2026-VM-tips\.next\cache\webpack\edge-server-development.pack.gz failed: TypeError: Cannot read properties of undefined (reading 'hasStartTime')

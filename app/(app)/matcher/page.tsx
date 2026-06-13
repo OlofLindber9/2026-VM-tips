@@ -8,9 +8,20 @@ import { applyMockIfEnabled } from "@/lib/mock-live";
 // Revalidate every 60 seconds so live scores refresh server-side
 export const revalidate = 60;
 
-export default async function RacesPage() {
+type MatchesPageProps = {
+  searchParams?: Promise<{ tab?: string | string[] }>;
+};
+
+type MatchesTab = "current" | "passed";
+
+export default async function RacesPage({ searchParams }: MatchesPageProps) {
   const session = await auth();
   const userId = session?.user?.id as string | undefined;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const tabParam = Array.isArray(resolvedSearchParams.tab)
+    ? resolvedSearchParams.tab[0]
+    : resolvedSearchParams.tab;
+  const activeTab: MatchesTab = tabParam === "passed" ? "passed" : "current";
 
   const [rawMatches, userPredictions] = await Promise.all([
     prisma.match.findMany({
@@ -36,6 +47,7 @@ export default async function RacesPage() {
   const live = matches.filter((m) => m.status === "live");
   const upcoming = matches.filter((m) => m.status === "upcoming" && m.scheduledAt >= now);
   const past = matches.filter((m) => m.status === "completed" || (m.status === "upcoming" && m.scheduledAt < now));
+  const currentCount = live.length + upcoming.length;
 
   const groupMatches = matches.filter((m) => m.stage === "group");
   const knockoutMatches = matches.filter((m) => m.stage !== "group");
@@ -56,6 +68,8 @@ export default async function RacesPage() {
         <h1 className="text-2xl font-bold text-white">VM 2026 — Matcher</h1>
       </div>
 
+      <MatchTabs activeTab={activeTab} currentCount={currentCount} passedCount={past.length} />
+
       {matches.length === 0 && (
         <div className="glass-card text-center py-12">
           <div className="text-4xl mb-3">📅</div>
@@ -65,7 +79,7 @@ export default async function RacesPage() {
       )}
 
       {/* Knockout tip deadline notice — shown after groups finish and before the first knockout starts */}
-      {showKnockoutDeadlineNotice && (
+      {activeTab === "current" && showKnockoutDeadlineNotice && (
         <div
           className="rounded-xl px-4 py-3 flex items-start gap-3 text-sm"
           style={{ background: "rgba(245,200,66,0.08)", border: "1px solid rgba(245,200,66,0.2)" }}
@@ -80,7 +94,7 @@ export default async function RacesPage() {
       )}
 
       {/* Group stage deadline notice — shown when all upcoming matches are group stage */}
-      {!hasKnockout && upcoming.length > 0 && (
+      {activeTab === "current" && !hasKnockout && upcoming.length > 0 && (
         <div
           className="rounded-xl px-4 py-3 flex items-start gap-3 text-sm"
           style={{ background: "rgba(184,240,200,0.06)", border: "1px solid rgba(184,240,200,0.15)" }}
@@ -94,7 +108,7 @@ export default async function RacesPage() {
         </div>
       )}
 
-      {live.length > 0 && (
+      {activeTab === "current" && live.length > 0 && (
         <section>
           <h2 className="font-bold text-lg text-red-400 mb-3 flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -108,7 +122,7 @@ export default async function RacesPage() {
         </section>
       )}
 
-      {upcoming.length > 0 && (
+      {activeTab === "current" && upcoming.length > 0 && (
         <section>
           <h2 className="font-bold text-lg text-white/70 mb-3">Kommande</h2>
           <div className="grid gap-3">
@@ -119,9 +133,15 @@ export default async function RacesPage() {
         </section>
       )}
 
-      {past.length > 0 && (
+      {activeTab === "current" && currentCount === 0 && matches.length > 0 && (
+        <div className="glass-card text-center py-10">
+          <p className="text-white/50">Inga live eller kommande matcher.</p>
+        </div>
+      )}
+
+      {activeTab === "passed" && past.length > 0 && (
         <section>
-          <h2 className="font-bold text-lg text-white/70 mb-3">Avslutade</h2>
+          <h2 className="font-bold text-lg text-white/70 mb-3">Passerade</h2>
           <div className="grid gap-3">
             {past.map((m) => (
               <MatchCard key={m.id} match={m} hasTipped={tippedMatchIds.has(m.id)} />
@@ -130,7 +150,64 @@ export default async function RacesPage() {
         </section>
       )}
 
+      {activeTab === "passed" && past.length === 0 && matches.length > 0 && (
+        <div className="glass-card text-center py-10">
+          <p className="text-white/50">Inga passerade matcher ännu.</p>
+        </div>
+      )}
+
     </div>
+  );
+}
+
+function MatchTabs({
+  activeTab,
+  currentCount,
+  passedCount,
+}: {
+  activeTab: MatchesTab;
+  currentCount: number;
+  passedCount: number;
+}) {
+  const tabs = [
+    { id: "current" as const, href: "/matcher", label: "Kommande", count: currentCount },
+    { id: "passed" as const, href: "/matcher?tab=passed", label: "Passerade", count: passedCount },
+  ];
+
+  return (
+    <nav
+      className="inline-flex max-w-full rounded-lg p-1"
+      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}
+      aria-label="Matchfilter"
+    >
+      {tabs.map((tab) => {
+        const isActive = tab.id === activeTab;
+        return (
+          <Link
+            key={tab.id}
+            href={tab.href}
+            className="min-w-0 rounded-md px-4 py-2 text-sm font-bold transition-colors flex items-center gap-2"
+            style={
+              isActive
+                ? { background: "rgba(184,240,200,0.14)", color: "rgb(184,240,200)" }
+                : { color: "rgba(255,255,255,0.55)" }
+            }
+            aria-current={isActive ? "page" : undefined}
+          >
+            <span className="truncate">{tab.label}</span>
+            <span
+              className="rounded-full px-1.5 py-0.5 text-[11px] tabular-nums"
+              style={{
+                background: isActive ? "rgba(184,240,200,0.16)" : "rgba(255,255,255,0.07)",
+                color: isActive ? "rgb(212,247,226)" : "rgba(255,255,255,0.45)",
+              }}
+            >
+              {tab.count}
+            </span>
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 

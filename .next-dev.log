@@ -1,0 +1,53 @@
+
+> prediction-game@0.1.0 dev
+> next dev -p 3000
+
+   ▲ Next.js 15.0.5
+   - Local:        http://localhost:3000
+   - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Compiled /instrumentation in 390ms (41 modules)
+[startup-sync] Running initial match sync...
+  API-Football bootstrap: 0 matched, 32 unmatched
+[startup-sync] Done: {
+  live: 1,
+  completed: 0,
+  predictionsScored: 0,
+  teamsUpdated: 0,
+  bootstrapped: { matched: 0, unmatched: 32 }
+}
+ ✓ Ready in 1969ms
+ ✓ Compiled /middleware in 496ms (224 modules)
+ ○ Compiling /login ...
+ ✓ Compiled /login in 2.1s (653 modules)
+ HEAD /login 200 in 2265ms
+ HEAD /login 200 in 2272ms
+ ✓ Compiled in 90ms (309 modules)
+ ✓ Compiled in 148ms (309 modules)
+ ○ Compiling / ...
+ ✓ Compiled / in 514ms (756 modules)
+ GET / 307 in 634ms
+ ✓ Compiled /dashboard in 159ms (780 modules)
+ GET /dashboard 200 in 420ms
+ ✓ Compiled /_not-found in 118ms (783 modules)
+ GET /_next/static/css/app/layout.css?v=1781379971185 404 in 201ms
+ GET /_next/static/chunks/app/layout.js 404 in 199ms
+ GET /_next/static/chunks/main-app.js?v=1781379971185 404 in 201ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 200ms
+ GET /dashboard 200 in 55ms
+ GET /_next/static/css/app/layout.css?v=1781379973225 404 in 28ms
+ GET /_next/static/chunks/main-app.js?v=1781379973225 404 in 28ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 27ms
+ GET /_next/static/chunks/app/layout.js 404 in 28ms
+ GET /dashboard 200 in 18ms
+ GET /_next/static/css/app/layout.css?v=1781379975616 404 in 21ms
+ GET /_next/static/chunks/main-app.js?v=1781379975616 404 in 20ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 20ms
+ GET /_next/static/chunks/app/layout.js 404 in 19ms
+ GET /dashboard 200 in 20ms
+ GET /_next/static/css/app/layout.css?v=1781379976232 404 in 17ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 17ms
+ GET /_next/static/chunks/main-app.js?v=1781379976232 404 in 17ms
+ GET /_next/static/chunks/app/layout.js 404 in 17ms
+[?25h
