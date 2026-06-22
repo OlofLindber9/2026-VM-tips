@@ -46,7 +46,9 @@ export default async function RacesPage({ searchParams }: MatchesPageProps) {
   const now = new Date();
   const live = matches.filter((m) => m.status === "live");
   const upcoming = matches.filter((m) => m.status === "upcoming" && m.scheduledAt >= now);
-  const past = matches.filter((m) => m.status === "completed" || (m.status === "upcoming" && m.scheduledAt < now));
+  const past = matches
+    .filter((m) => m.status === "completed" || (m.status === "upcoming" && m.scheduledAt < now))
+    .reverse();
   const currentCount = live.length + upcoming.length;
 
   const groupMatches = matches.filter((m) => m.stage === "group");
