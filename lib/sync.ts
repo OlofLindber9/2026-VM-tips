@@ -147,6 +147,7 @@ export async function syncMatches({ mode = "auto" }: { mode?: SyncMode } = {}): 
   const fixtures = await getFixturesForMode(mode, new Date());
   if (fixtures.length === 0) {
     console.log("  No WC fixtures in sync window.");
+    result.predictionsScored += await scoreCompletedMatchesWithUnscoredPredictions();
     return result;
   }
 
@@ -196,6 +197,8 @@ export async function syncMatches({ mode = "auto" }: { mode?: SyncMode } = {}): 
       }
     }
   }
+
+  result.predictionsScored += await scoreCompletedMatchesWithUnscoredPredictions();
 
   return result;
 }
@@ -499,4 +502,42 @@ export async function scorePredictions(
   }
 
   return predictions.length;
+}
+
+export async function scoreCompletedMatchesWithUnscoredPredictions(): Promise<number> {
+  const matches = await prisma.match.findMany({
+    where: {
+      status: "completed",
+      homeScore: { not: null },
+      awayScore: { not: null },
+      predictions: { some: { score: null } },
+    },
+    select: {
+      id: true,
+      stage: true,
+      homeTeamId: true,
+      awayTeamId: true,
+      homeScore: true,
+      awayScore: true,
+      knockoutWinner: true,
+    },
+  });
+
+  let scored = 0;
+  for (const match of matches) {
+    if (match.homeScore === null || match.awayScore === null) continue;
+    if (match.stage !== "group" && !match.knockoutWinner) continue;
+
+    scored += await scorePredictions(
+      match.id,
+      match.stage,
+      match.homeTeamId,
+      match.awayTeamId,
+      match.homeScore,
+      match.awayScore,
+      match.knockoutWinner
+    );
+  }
+
+  return scored;
 }
