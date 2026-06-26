@@ -204,16 +204,25 @@ export async function syncMatches({ mode = "auto" }: { mode?: SyncMode } = {}): 
 }
 
 async function bootstrapApiFootballIds(): Promise<{ matched: number; unmatched: number }> {
-  const [dbMatches, fixtures] = await Promise.all([
+  const [dbMatches, fixtures, existingMappedMatches] = await Promise.all([
     prisma.match.findMany({
       where: { apiFootballId: null, status: { not: "completed" } },
+      orderBy: [{ scheduledAt: "asc" }, { matchNumber: "asc" }, { id: "asc" }],
     }),
     getAllFixtures(),
+    prisma.match.findMany({
+      where: { apiFootballId: { not: null } },
+      select: { apiFootballId: true },
+    }),
   ]);
 
   let matched = 0;
   let unmatched = 0;
-  const usedFixtureIds = new Set<number>();
+  const usedFixtureIds = new Set(
+    existingMappedMatches
+      .map((match) => match.apiFootballId)
+      .filter((id): id is number => id !== null)
+  );
 
   for (const dbMatch of dbMatches) {
     const fixture = findBestFixtureMatch(dbMatch, fixtures, usedFixtureIds);
