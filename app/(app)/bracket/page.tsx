@@ -104,17 +104,14 @@ export default async function BracketPage({
         <div>
           <p className="mb-1 text-[11px] font-bold uppercase tracking-widest text-white/40">Poäng</p>
           <p className="text-2xl font-black tabular-nums text-app-ice">{bracket.userPointsAwarded}</p>
-          <p className="text-[10px] uppercase tracking-wider text-white/35">Tilldelade</p>
         </div>
         <div>
           <p className="mb-1 text-[11px] font-bold uppercase tracking-widest text-white/40">Möjliga</p>
           <p className="text-2xl font-black tabular-nums text-app-accent">{bracket.userPointsAtRisk}</p>
-          <p className="text-[10px] uppercase tracking-wider text-white/35">Lag fortfarande kvar</p>
         </div>
         <div>
           <p className="mb-1 text-[11px] font-bold uppercase tracking-widest text-white/40">Förlorade</p>
           <p className="text-2xl font-black tabular-nums text-red-400/80">{bracket.userPointsLost}</p>
-          <p className="text-[10px] uppercase tracking-wider text-white/35">fel</p>
         </div>
       </div>
 

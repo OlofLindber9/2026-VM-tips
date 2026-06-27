@@ -590,7 +590,7 @@ function TeamLine({
 
   const content = (
     <>
-      <span className="min-w-0 truncate font-semibold text-white/78">
+      <span className="min-w-0 truncate font-semibold text-app-frost">
         <span className="mr-1">{teamFlag(team.id)}</span>
         {team.name}
       </span>

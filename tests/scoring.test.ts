@@ -28,6 +28,13 @@ describe("scoring", () => {
     assert.equal(calculateKnockoutScore("SWE", "BRA"), 0);
   });
 
+  it("scores zero when a predicted knockout team is not in the actual match", () => {
+    assert.equal(
+      calculateScore("sf", null, null, "FRA", 1, 0, "POR"),
+      0
+    );
+  });
+
   it("scores finals with winner and exact 90-minute score", () => {
     assert.equal(calculateFinalScore("SWE", 2, 1, 2, 1, "SWE"), 5);
     assert.equal(calculateFinalScore("SWE", 1, 0, 2, 1, "SWE"), 3);
