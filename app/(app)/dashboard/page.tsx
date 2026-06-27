@@ -52,7 +52,14 @@ export default async function DashboardPage() {
 
   const groupIds = memberships.map((m) => m.groupId);
 
-  const [groupPredictionCounts, knockoutPredictionCounts, groupScores, memberUsers] = groupIds.length > 0
+  const [
+    groupPredictionCounts,
+    knockoutPredictionCounts,
+    totalScores,
+    groupStageScores,
+    knockoutScores,
+    memberUsers,
+  ] = groupIds.length > 0
     ? await Promise.all([
         prisma.prediction.groupBy({
           by: ["groupId"],
@@ -69,6 +76,16 @@ export default async function DashboardPage() {
           where: { groupId: { in: groupIds } },
           _sum: { score: true },
         }),
+        prisma.prediction.groupBy({
+          by: ["userId", "groupId"],
+          where: { groupId: { in: groupIds }, match: { stage: "group" } },
+          _sum: { score: true },
+        }),
+        prisma.prediction.groupBy({
+          by: ["userId", "groupId"],
+          where: { groupId: { in: groupIds }, match: { stage: { not: "group" } } },
+          _sum: { score: true },
+        }),
         prisma.user.findMany({
           where: {
             id: {
@@ -82,7 +99,7 @@ export default async function DashboardPage() {
           select: { id: true, displayName: true },
         }),
       ])
-    : [[], [], [], []];
+    : [[], [], [], [], [], []];
 
   const groupPredictionCountByGroupId = new Map(
     groupPredictionCounts.map((row) => [row.groupId, row._count._all])
@@ -127,26 +144,45 @@ export default async function DashboardPage() {
     return isPlaceholderTeamId(id) ? "Okänt lag" : name;
   }
 
+  function scoreMapFor(rows: typeof totalScores, groupId: string): Record<string, number> {
+    return Object.fromEntries(
+      rows
+        .filter((s) => s.groupId === groupId)
+        .map((s) => [s.userId, s._sum.score ?? 0])
+    );
+  }
+
   const standingsByGroup = memberships.map((membership) => {
     const group = membership.group;
-    const scoresForGroup = groupScores.filter((s) => s.groupId === group.id);
-    const scoreMap = Object.fromEntries(
-      scoresForGroup.map((s) => [s.userId, s._sum.score ?? 0])
-    );
+    const totalScoreMap = scoreMapFor(totalScores, group.id);
+    const groupStageScoreMap = scoreMapFor(groupStageScores, group.id);
+    const knockoutScoreMap = scoreMapFor(knockoutScores, group.id);
 
-    const leaderboard = group.members
-      .map((m) => ({
-        userId: m.userId,
-        name: memberDisplayName(m.userId),
-        score: scoreMap[m.userId] ?? 0,
-        isCurrentUser: m.userId === userId,
-      }))
-      .sort((a, b) => b.score - a.score);
+    function buildLeaderboard(scoreMap: Record<string, number>) {
+      return group.members
+        .map((m) => ({
+          userId: m.userId,
+          name: memberDisplayName(m.userId),
+          score: scoreMap[m.userId] ?? 0,
+          isCurrentUser: m.userId === userId,
+        }))
+        .sort((a, b) => b.score - a.score);
+    }
 
-    // Find current user's rank (0-indexed)
-    const userRank = leaderboard.findIndex((e) => e.isCurrentUser);
+    const totalLeaderboard = buildLeaderboard(totalScoreMap);
+    const userRank = totalLeaderboard.findIndex((e) => e.isCurrentUser);
 
-    return { groupId: group.id, groupName: group.name, leaderboard, userRank };
+    return {
+      groupId: group.id,
+      groupName: group.name,
+      leaderboard: totalLeaderboard,
+      leaderboards: {
+        total: totalLeaderboard,
+        groupStage: buildLeaderboard(groupStageScoreMap),
+        knockout: buildLeaderboard(knockoutScoreMap),
+      },
+      userRank,
+    };
   });
 
   return (
@@ -236,7 +272,7 @@ export default async function DashboardPage() {
             </Link>
           </div>
           <div className={`grid gap-4 ${standingsByGroup.length > 1 ? "sm:grid-cols-2" : ""}`}>
-            {standingsByGroup.map(({ groupId, groupName, leaderboard, userRank }) => (
+            {standingsByGroup.map(({ groupId, groupName, leaderboard, leaderboards, userRank }) => (
               <div key={groupId} className="glass-card">
                 <div className="flex justify-between items-center mb-4">
                   <Link
@@ -257,6 +293,9 @@ export default async function DashboardPage() {
                   <p className="text-white/40 text-sm">Inga deltagare ännu.</p>
                 ) : (
                   <div className="space-y-1.5">
+                    <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-white/35">
+                      Totalt
+                    </p>
                     {leaderboard.map((entry, i) => {
                       const medals: Record<number, string> = { 0: "🥇", 1: "🥈", 2: "🥉" };
                       return (
@@ -302,6 +341,13 @@ export default async function DashboardPage() {
                         </div>
                       );
                     })}
+                  </div>
+                )}
+
+                {leaderboards && (
+                  <div className="mt-4 grid gap-3">
+                    <DashboardLeaderboard title="Gruppspel" entries={leaderboards.groupStage} compact />
+                    <DashboardLeaderboard title="Slutspel" entries={leaderboards.knockout} compact accent="gold" />
                   </div>
                 )}
 
@@ -382,6 +428,63 @@ export default async function DashboardPage() {
             })}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+type DashboardLeaderboardEntry = {
+  userId: string;
+  name: string;
+  score: number;
+  isCurrentUser: boolean;
+};
+
+function DashboardLeaderboard({
+  title,
+  entries,
+  compact = false,
+  accent = "green",
+}: {
+  title: string;
+  entries: DashboardLeaderboardEntry[];
+  compact?: boolean;
+  accent?: "green" | "gold";
+}) {
+  const scoreColor = accent === "gold" ? "text-app-gold" : "text-app-ice";
+
+  return (
+    <div
+      className="rounded-xl border px-3 py-2.5"
+      style={{ background: "rgba(255,255,255,0.035)", borderColor: "rgba(255,255,255,0.08)" }}
+    >
+      <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-white/35">
+        {title}
+      </p>
+      <div className="space-y-1.5">
+        {entries.map((entry, i) => (
+          <div
+            key={entry.userId}
+            className={`flex items-center gap-2 rounded-lg ${compact ? "px-2 py-1.5" : "px-3 py-2"}`}
+            style={{
+              background: entry.isCurrentUser
+                ? "rgba(184, 240, 200, 0.08)"
+                : "rgba(255, 255, 255, 0.03)",
+            }}
+          >
+            <span className="w-5 shrink-0 text-center text-xs font-bold text-white/35">{i + 1}</span>
+            <span
+              className={`min-w-0 flex-1 truncate ${compact ? "text-xs" : "text-sm"} font-semibold ${
+                entry.isCurrentUser ? "text-app-ice" : "text-white/75"
+              }`}
+            >
+              {entry.name}
+            </span>
+            <span className={`shrink-0 text-sm font-black tabular-nums ${scoreColor}`}>
+              {entry.score}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );

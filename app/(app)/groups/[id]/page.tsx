@@ -18,6 +18,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
 
   const isMember = group.members.some((m) => m.userId === userId);
   if (!isMember) notFound();
+  const groupMembers = group.members;
 
   const predictions = await prisma.prediction.findMany({
     where: { groupId: id },
@@ -30,6 +31,8 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
   });
 
   const scoresByUser: Record<string, number> = {};
+  const groupStageScoresByUser: Record<string, number> = {};
+  const knockoutScoresByUser: Record<string, number> = {};
   type PredEntry = {
     match: (typeof predictions)[number]["match"];
     score: number | null;
@@ -40,7 +43,13 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
   const predictionsByUser: Record<string, PredEntry[]> = {};
 
   for (const pred of predictions) {
-    scoresByUser[pred.userId] = (scoresByUser[pred.userId] || 0) + (pred.score ?? 0);
+    const points = pred.score ?? 0;
+    scoresByUser[pred.userId] = (scoresByUser[pred.userId] || 0) + points;
+    if (pred.match.stage === "group") {
+      groupStageScoresByUser[pred.userId] = (groupStageScoresByUser[pred.userId] || 0) + points;
+    } else {
+      knockoutScoresByUser[pred.userId] = (knockoutScoresByUser[pred.userId] || 0) + points;
+    }
     if (!predictionsByUser[pred.userId]) predictionsByUser[pred.userId] = [];
     predictionsByUser[pred.userId].push({
       match: pred.match,
@@ -51,7 +60,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     });
   }
 
-  const userIds = group.members.map((m) => m.userId);
+  const userIds = groupMembers.map((m) => m.userId);
   const users = await prisma.user.findMany({ where: { id: { in: userIds } } });
   const userMap = Object.fromEntries(users.map((u) => [u.id, u.displayName]));
 
@@ -60,15 +69,24 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     return userMap[uid] || "Deltagare " + uid.slice(0, 6);
   }
 
-  const leaderboard = group.members
-    .map((m) => ({
-      userId: m.userId,
-      displayName: displayName(m.userId),
-      totalScore: scoresByUser[m.userId] || 0,
-      predictionsCount: predictionsByUser[m.userId]?.length || 0,
-      scoredCount: predictionsByUser[m.userId]?.filter((p) => p.score !== null).length || 0,
-    }))
-    .sort((a, b) => b.totalScore - a.totalScore);
+  function buildLeaderboard(scoreMap: Record<string, number>) {
+    return groupMembers
+      .map((m) => ({
+        userId: m.userId,
+        displayName: displayName(m.userId),
+        totalScore: scoreMap[m.userId] || 0,
+        predictionsCount: predictionsByUser[m.userId]?.length || 0,
+        scoredCount: predictionsByUser[m.userId]?.filter((p) => p.score !== null).length || 0,
+      }))
+      .sort((a, b) => b.totalScore - a.totalScore);
+  }
+
+  const leaderboards = {
+    total: buildLeaderboard(scoresByUser),
+    groupStage: buildLeaderboard(groupStageScoresByUser),
+    knockout: buildLeaderboard(knockoutScoresByUser),
+  };
+  const leaderboard = leaderboards.total;
 
 
   return (
@@ -98,6 +116,9 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
       {/* Leaderboard */}
       <div className="glass-card">
         <h2 className="font-bold text-white mb-4">🏆 Topplista</h2>
+        <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-white/35">
+          Totalt
+        </p>
         {leaderboard.length === 0 ? (
           <p className="text-white/40 text-sm">Inga deltagare ännu.</p>
         ) : (
@@ -150,8 +171,79 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
         )}
       </div>
 
+      <ScoreboardCard title="Gruppspel" entries={leaderboards.groupStage} currentUserId={userId} />
+      <ScoreboardCard title="Slutspel" entries={leaderboards.knockout} currentUserId={userId} accent="gold" />
+
       {/* Chat */}
       <GroupChat groupId={id} currentUserId={userId} />
+    </div>
+  );
+}
+
+type ScoreboardEntry = {
+  userId: string;
+  displayName: string;
+  totalScore: number;
+};
+
+function ScoreboardCard({
+  title,
+  entries,
+  currentUserId,
+  accent = "green",
+}: {
+  title: string;
+  entries: ScoreboardEntry[];
+  currentUserId: string;
+  accent?: "green" | "gold";
+}) {
+  const scoreClass = accent === "gold" ? "text-app-gold" : "text-app-ice";
+
+  return (
+    <div className="glass-card">
+      <h2 className="font-bold text-white mb-4">{title}</h2>
+      {entries.length === 0 ? (
+        <p className="text-white/40 text-sm">Inga deltagare ännu.</p>
+      ) : (
+        <div className="space-y-2">
+          {entries.map((entry, i) => {
+            const isCurrentUser = entry.userId === currentUserId;
+            return (
+              <div
+                key={entry.userId}
+                className="flex items-center gap-4 px-4 py-3 rounded-xl border transition-all"
+                style={{
+                  background: isCurrentUser
+                    ? "rgba(184, 240, 200, 0.10)"
+                    : i === 0
+                    ? "rgba(245, 200, 66, 0.10)"
+                    : "rgba(255, 255, 255, 0.04)",
+                  borderColor: isCurrentUser
+                    ? "rgba(184, 240, 200, 0.25)"
+                    : i === 0
+                    ? "rgba(232, 160, 32, 0.2)"
+                    : "rgba(255, 255, 255, 0.08)",
+                }}
+              >
+                <span className="w-8 text-center text-sm font-black text-white/45">
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold text-sm text-white">
+                    {entry.displayName}
+                    {isCurrentUser && (
+                      <span className="ml-2 text-xs text-app-ice">(du)</span>
+                    )}
+                  </span>
+                </div>
+                <span className={`font-bold text-lg tabular-nums ${scoreClass}`}>
+                  {entry.totalScore} <span className="text-xs font-normal text-white/40">pts</span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
