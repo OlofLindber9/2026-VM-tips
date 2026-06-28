@@ -22,6 +22,7 @@ import { parseEvents, parseStats } from "@/lib/mock-live";
 import { prisma } from "@/lib/prisma";
 import { calculateScore, actualWinnerTeamId as resolveWinnerTeamId } from "@/lib/scoring";
 import { isPlaceholderTeamId } from "@/lib/utils";
+import { knockoutScheduleForCode } from "@/lib/knockout-schedule";
 
 const MATCH_WINDOW_HOURS = 36;
 
@@ -30,6 +31,8 @@ type BracketSlot = "home" | "away";
 type SyncDbMatch = {
   id: string;
   apiFootballId: number | null;
+  bracketCode?: string | null;
+  matchNumber?: number | null;
   homeTeamId: string;
   awayTeamId: string;
   scheduledAt: Date;
@@ -203,6 +206,88 @@ export async function syncMatches({ mode = "auto" }: { mode?: SyncMode } = {}): 
   return result;
 }
 
+export async function reconcileKnockoutFixtureMappings(): Promise<{ remapped: number; teamsUpdated: number }> {
+  const knockoutStages = ["r32", "r16", "qf", "sf", "3p", "final"];
+  const [dbMatches, fixtures] = await Promise.all([
+    prisma.match.findMany({
+      where: {
+        stage: { in: knockoutStages },
+        status: { not: "completed" },
+        bracketCode: { not: null },
+      },
+      orderBy: [{ scheduledAt: "asc" }, { matchNumber: "asc" }, { id: "asc" }],
+    }),
+    getAllFixtures(),
+  ]);
+
+  const usedFixtureIds = new Set<number>();
+  const updates: {
+    matchId: string;
+    apiFootballId: number;
+    scheduledAt: Date;
+    homeTeamId: string;
+    awayTeamId: string;
+    teamsUpdated: number;
+  }[] = [];
+
+  for (const dbMatch of dbMatches) {
+    const fixture = findCanonicalBracketFixtureMatch(dbMatch, fixtures, usedFixtureIds);
+    if (!fixture) continue;
+    usedFixtureIds.add(fixture.fixture.id);
+
+    const home = teamMappingForApiName(fixture.teams.home.name);
+    const away = teamMappingForApiName(fixture.teams.away.name);
+    if (!home || !away) continue;
+    await ensureFixtureTeams(home, away);
+
+    const scheduledAt = new Date(fixture.fixture.date);
+    const teamsUpdated =
+      Number(dbMatch.homeTeamId !== home.id) + Number(dbMatch.awayTeamId !== away.id);
+
+    if (
+      dbMatch.apiFootballId !== fixture.fixture.id ||
+      Math.abs(dbMatch.scheduledAt.getTime() - scheduledAt.getTime()) > 60_000 ||
+      dbMatch.homeTeamId !== home.id ||
+      dbMatch.awayTeamId !== away.id
+    ) {
+      updates.push({
+        matchId: dbMatch.id,
+        apiFootballId: fixture.fixture.id,
+        scheduledAt,
+        homeTeamId: home.id,
+        awayTeamId: away.id,
+        teamsUpdated,
+      });
+    }
+  }
+
+  if (updates.length === 0) return { remapped: 0, teamsUpdated: 0 };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.match.updateMany({
+      where: { id: { in: updates.map((update) => update.matchId) } },
+      data: { apiFootballId: null },
+    });
+
+    for (const update of updates) {
+      await tx.match.update({
+        where: { id: update.matchId },
+        data: {
+          apiFootballId: update.apiFootballId,
+          scheduledAt: update.scheduledAt,
+          homeTeamId: update.homeTeamId,
+          awayTeamId: update.awayTeamId,
+        },
+      });
+    }
+  });
+
+  return {
+    remapped: updates.length,
+    teamsUpdated: updates.reduce((sum, update) => sum + update.teamsUpdated, 0),
+  };
+}
+
 async function bootstrapApiFootballIds(): Promise<{ matched: number; unmatched: number }> {
   const [dbMatches, fixtures, existingMappedMatches] = await Promise.all([
     prisma.match.findMany({
@@ -348,11 +433,14 @@ export function buildMatchUpdate(dbMatch: SyncDbMatch, fixture: AFFixture) {
   };
 }
 
-function findBestFixtureMatch(
+export function findBestFixtureMatch(
   dbMatch: SyncDbMatch,
   fixtures: AFFixture[],
   usedFixtureIds: Set<number>
 ): AFFixture | null {
+  const schedule = knockoutScheduleForCode(dbMatch.bracketCode);
+  const targetScheduledAt = schedule?.scheduledAt ?? dbMatch.scheduledAt;
+
   const candidates = fixtures
     .filter((fixture) => !usedFixtureIds.has(fixture.fixture.id))
     .filter((fixture) => stageFromApiRound(fixture.league.round) === dbMatch.stage)
@@ -363,10 +451,11 @@ function findBestFixtureMatch(
         home?.id === dbMatch.homeTeamId && away?.id === dbMatch.awayTeamId;
       const hasPlaceholder = isPlaceholderTeamId(dbMatch.homeTeamId) || isPlaceholderTeamId(dbMatch.awayTeamId);
       const fixtureTime = new Date(fixture.fixture.date).getTime();
-      const timeDiffMs = Math.abs(fixtureTime - dbMatch.scheduledAt.getTime());
+      const timeDiffMs = Math.abs(fixtureTime - targetScheduledAt.getTime());
       const timeDiffHours = timeDiffMs / 3_600_000;
 
       let score = 0;
+      if (schedule?.matchNumber === dbMatch.matchNumber) score += 200;
       if (exactTeams) score += 1000;
       if (hasPlaceholder && home && away) score += 100;
       if (timeDiffHours <= MATCH_WINDOW_HOURS) score += Math.max(0, 100 - timeDiffHours);
@@ -379,6 +468,28 @@ function findBestFixtureMatch(
       return false;
     })
     .sort((a, b) => b.score - a.score);
+
+  return candidates[0]?.fixture ?? null;
+}
+
+export function findCanonicalBracketFixtureMatch(
+  dbMatch: SyncDbMatch,
+  fixtures: AFFixture[],
+  usedFixtureIds: Set<number>
+): AFFixture | null {
+  const schedule = knockoutScheduleForCode(dbMatch.bracketCode);
+  if (!schedule) return null;
+
+  const candidates = fixtures
+    .filter((fixture) => !usedFixtureIds.has(fixture.fixture.id))
+    .filter((fixture) => stageFromApiRound(fixture.league.round) === dbMatch.stage)
+    .map((fixture) => {
+      const fixtureTime = new Date(fixture.fixture.date).getTime();
+      const timeDiffMs = Math.abs(fixtureTime - schedule.scheduledAt.getTime());
+      return { fixture, timeDiffMs };
+    })
+    .filter((candidate) => candidate.timeDiffMs <= 4 * 3_600_000)
+    .sort((a, b) => a.timeDiffMs - b.timeDiffMs);
 
   return candidates[0]?.fixture ?? null;
 }

@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import type { AFFixture } from "../lib/api-football";
 import {
   buildMatchUpdate,
+  findCanonicalBracketFixtureMatch,
   resolveApiFootballKnockoutWinner,
   stageFromApiRound,
 } from "../lib/sync";
@@ -55,6 +56,43 @@ describe("sync fixture parsing", () => {
     assert.equal(stageFromApiRound("Quarter-finals"), "qf");
     assert.equal(stageFromApiRound("3rd Place Final"), "3p");
     assert.equal(stageFromApiRound("Final"), "final");
+  });
+
+  it("matches bracket fixtures by canonical bracket kickoff instead of stale DB teams", () => {
+    const brazilJapanFixture: AFFixture = {
+      ...baseFixture,
+      fixture: { ...baseFixture.fixture, id: 201, date: "2026-06-29T17:00:00Z" },
+      league: { ...baseFixture.league, round: "Round of 32" },
+      teams: {
+        home: { id: 10, name: "Brazil" },
+        away: { id: 11, name: "Japan" },
+      },
+    };
+    const germanyParaguayFixture: AFFixture = {
+      ...baseFixture,
+      fixture: { ...baseFixture.fixture, id: 202, date: "2026-06-29T20:30:00Z" },
+      league: { ...baseFixture.league, round: "Round of 32" },
+      teams: {
+        home: { id: 12, name: "Germany" },
+        away: { id: 13, name: "Paraguay" },
+      },
+    };
+
+    const match = findCanonicalBracketFixtureMatch(
+      {
+        ...baseDbMatch,
+        stage: "r32",
+        bracketCode: "R32-1",
+        matchNumber: 74,
+        homeTeamId: "BRA",
+        awayTeamId: "JPN",
+        scheduledAt: new Date("2026-06-29T17:00:00Z"),
+      },
+      [brazilJapanFixture, germanyParaguayFixture],
+      new Set()
+    );
+
+    assert.equal(match?.fixture.id, 202);
   });
 
   it("uses penalty shootout data to resolve a tied knockout winner", () => {
