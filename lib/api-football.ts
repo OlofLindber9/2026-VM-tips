@@ -51,6 +51,11 @@ export type AFFixture = {
   fixture: {
     id: number;
     date: string; // ISO 8601
+    venue?: {
+      id?: number | null;
+      name?: string | null;
+      city?: string | null;
+    };
     status: AFFixtureStatus;
   };
   league: {

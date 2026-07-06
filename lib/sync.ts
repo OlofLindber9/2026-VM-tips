@@ -22,9 +22,11 @@ import { parseEvents, parseStats } from "@/lib/mock-live";
 import { prisma } from "@/lib/prisma";
 import { calculateScore, actualWinnerTeamId as resolveWinnerTeamId } from "@/lib/scoring";
 import { isPlaceholderTeamId } from "@/lib/utils";
-import { knockoutScheduleForCode } from "@/lib/knockout-schedule";
+import { knockoutScheduleForCode, type KnockoutScheduleEntry } from "@/lib/knockout-schedule";
 
 const MATCH_WINDOW_HOURS = 36;
+const BRACKET_SCHEDULE_WINDOW_HOURS = 4;
+const BRACKET_SCHEDULE_NO_VENUE_WINDOW_HOURS = 2;
 
 type BracketSlot = "home" | "away";
 
@@ -453,16 +455,21 @@ export function findBestFixtureMatch(
       const fixtureTime = new Date(fixture.fixture.date).getTime();
       const timeDiffMs = Math.abs(fixtureTime - targetScheduledAt.getTime());
       const timeDiffHours = timeDiffMs / 3_600_000;
+      const scheduleMatch = schedule ? matchScheduleFit(fixture, schedule, timeDiffHours) : null;
 
       let score = 0;
-      if (schedule?.matchNumber === dbMatch.matchNumber) score += 200;
+      if (scheduleMatch?.venueMatch === true) score += 200;
       if (exactTeams) score += 1000;
       if (hasPlaceholder && home && away) score += 100;
       if (timeDiffHours <= MATCH_WINDOW_HOURS) score += Math.max(0, 100 - timeDiffHours);
 
-      return { fixture, exactTeams, hasPlaceholder, timeDiffHours, score };
+      return { fixture, exactTeams, hasPlaceholder, timeDiffHours, scheduleMatch, score };
     })
     .filter((candidate) => {
+      if (schedule) {
+        if (!candidate.scheduleMatch?.matches) return false;
+        return candidate.exactTeams || candidate.hasPlaceholder;
+      }
       if (candidate.exactTeams) return candidate.timeDiffHours <= MATCH_WINDOW_HOURS;
       if (candidate.hasPlaceholder) return candidate.timeDiffHours <= 4;
       return false;
@@ -486,12 +493,48 @@ export function findCanonicalBracketFixtureMatch(
     .map((fixture) => {
       const fixtureTime = new Date(fixture.fixture.date).getTime();
       const timeDiffMs = Math.abs(fixtureTime - schedule.scheduledAt.getTime());
-      return { fixture, timeDiffMs };
+      const timeDiffHours = timeDiffMs / 3_600_000;
+      return { fixture, timeDiffMs, scheduleMatch: matchScheduleFit(fixture, schedule, timeDiffHours) };
     })
-    .filter((candidate) => candidate.timeDiffMs <= 4 * 3_600_000)
+    .filter((candidate) => candidate.scheduleMatch.matches)
     .sort((a, b) => a.timeDiffMs - b.timeDiffMs);
 
   return candidates[0]?.fixture ?? null;
+}
+
+function matchScheduleFit(
+  fixture: AFFixture,
+  schedule: KnockoutScheduleEntry,
+  timeDiffHours: number
+): { matches: boolean; venueMatch: boolean | null } {
+  const venueMatch = fixtureVenueMatchesSchedule(fixture, schedule);
+  if (venueMatch === false) return { matches: false, venueMatch };
+
+  const maxHours =
+    venueMatch === true
+      ? BRACKET_SCHEDULE_WINDOW_HOURS
+      : BRACKET_SCHEDULE_NO_VENUE_WINDOW_HOURS;
+
+  return {
+    matches: timeDiffHours <= maxHours,
+    venueMatch,
+  };
+}
+
+function fixtureVenueMatchesSchedule(
+  fixture: AFFixture,
+  schedule: KnockoutScheduleEntry
+): boolean | null {
+  const fixtureVenue = fixture.fixture.venue?.name;
+  if (!fixtureVenue) return null;
+  return normalizeVenueName(fixtureVenue) === normalizeVenueName(schedule.venue);
+}
+
+function normalizeVenueName(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]/g, "");
 }
 
 export function statusFromFixture(fixture: AFFixture): "upcoming" | "live" | "completed" {

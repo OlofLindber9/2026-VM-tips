@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import type { AFFixture } from "../lib/api-football";
 import {
   buildMatchUpdate,
+  findBestFixtureMatch,
   findCanonicalBracketFixtureMatch,
   resolveApiFootballKnockoutWinner,
   stageFromApiRound,
@@ -93,6 +94,73 @@ describe("sync fixture parsing", () => {
     );
 
     assert.equal(match?.fixture.id, 202);
+  });
+
+  it("does not match an adjacent knockout fixture at a different venue", () => {
+    const norwayEnglandFixture: AFFixture = {
+      ...baseFixture,
+      fixture: {
+        ...baseFixture.fixture,
+        id: 301,
+        date: "2026-07-11T21:00:00Z",
+        venue: { id: 0, name: "Hard Rock Stadium", city: "Miami" },
+      },
+      league: { ...baseFixture.league, round: "Quarter-finals" },
+      teams: {
+        home: { id: 1090, name: "Norway" },
+        away: { id: 10, name: "England" },
+      },
+    };
+
+    const match = findCanonicalBracketFixtureMatch(
+      {
+        ...baseDbMatch,
+        stage: "qf",
+        bracketCode: "QF-4",
+        matchNumber: 100,
+        homeTeamId: "TBD-R16-7",
+        awayTeamId: "TBD-R16-8",
+        scheduledAt: new Date("2026-07-12T01:00:00Z"),
+      },
+      [norwayEnglandFixture],
+      new Set()
+    );
+
+    assert.equal(match, null);
+  });
+
+  it("does not bootstrap placeholders from an adjacent knockout fixture at a different venue", () => {
+    const norwayEnglandFixture: AFFixture = {
+      ...baseFixture,
+      fixture: {
+        ...baseFixture.fixture,
+        id: 302,
+        date: "2026-07-11T21:00:00Z",
+        venue: { id: 0, name: "Hard Rock Stadium", city: "Miami" },
+      },
+      league: { ...baseFixture.league, round: "Quarter-finals" },
+      teams: {
+        home: { id: 1090, name: "Norway" },
+        away: { id: 10, name: "England" },
+      },
+    };
+
+    const match = findBestFixtureMatch(
+      {
+        ...baseDbMatch,
+        apiFootballId: null,
+        stage: "qf",
+        bracketCode: "QF-4",
+        matchNumber: 100,
+        homeTeamId: "TBD-R16-7",
+        awayTeamId: "TBD-R16-8",
+        scheduledAt: new Date("2026-07-12T01:00:00Z"),
+      },
+      [norwayEnglandFixture],
+      new Set()
+    );
+
+    assert.equal(match, null);
   });
 
   it("uses penalty shootout data to resolve a tied knockout winner", () => {
